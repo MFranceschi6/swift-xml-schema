@@ -26,7 +26,7 @@ Tutti e 5 gli item erano già implementati nel bootstrap. Archiviato in `.claude
 
 ---
 
-## Phase 0.2 — Diagnostiche, Error Model e Resource Resolution (Swift 5.4)
+## Phase 0.2 — Diagnostiche, Error Model e Resource Resolution (Swift 5.4) ✅ COMPLETATA (2026-04-05)
 
 **Obiettivo:** Rendere la libreria usabile in produzione con errori azionabili e resolver non-locali.
 

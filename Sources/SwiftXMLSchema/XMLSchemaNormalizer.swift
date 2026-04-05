@@ -418,135 +418,201 @@ public struct XMLNormalizedSchema: Sendable, Equatable {
     }
 }
 
+// MARK: - XMLNormalizedSchemaSet
+
+/// Holds the result of ``XMLSchemaSourceLocation`` after normalisation and stores pre-computed
+/// indices so that every lookup is O(1) rather than O(n × m).
 public struct XMLNormalizedSchemaSet: Sendable, Equatable {
     public let schemas: [XMLNormalizedSchema]
+
+    // Namespace-qualified key  → component
+    // Bare key (namespaceURI: nil) → first component with that local name across all schemas
+    private let elementIndex: [String: XMLNormalizedElementDeclaration]
+    private let complexTypeIndex: [String: XMLNormalizedComplexType]
+    private let simpleTypeIndex: [String: XMLNormalizedSimpleType]
+    private let attributeIndex: [String: XMLNormalizedAttributeDefinition]
+    private let attributeGroupIndex: [String: XMLNormalizedAttributeGroup]
+    private let modelGroupIndex: [String: XMLNormalizedModelGroup]
+
+    // typeQName key → (elementName, schemaNamespace)
+    private struct _RootBinding: Equatable {
+        let elementName: String
+        let namespaceURI: String?
+    }
+    private let rootElementByTypeIndex: [String: _RootBinding]
+
+    // head-element key → [members]
     private let substitutionGroupIndex: [String: [XMLNormalizedElementDeclaration]]
+
+    // base-type key → [types that directly derive from it]
+    private let derivedComplexTypeIndex: [String: [XMLNormalizedComplexType]]
+    private let derivedSimpleTypeIndex: [String: [XMLNormalizedSimpleType]]
 
     public init(schemas: [XMLNormalizedSchema]) {
         self.schemas = schemas
-        self.substitutionGroupIndex = schemas.reduce(into: [:]) { partialResult, schema in
+
+        var elemIdx: [String: XMLNormalizedElementDeclaration] = [:]
+        var ctIdx: [String: XMLNormalizedComplexType] = [:]
+        var stIdx: [String: XMLNormalizedSimpleType] = [:]
+        var attrIdx: [String: XMLNormalizedAttributeDefinition] = [:]
+        var agIdx: [String: XMLNormalizedAttributeGroup] = [:]
+        var mgIdx: [String: XMLNormalizedModelGroup] = [:]
+        var rootIdx: [String: _RootBinding] = [:]
+        var sgIdx: [String: [XMLNormalizedElementDeclaration]] = [:]
+        var dcIdx: [String: [XMLNormalizedComplexType]] = [:]
+        var dsIdx: [String: [XMLNormalizedSimpleType]] = [:]
+
+        for schema in schemas {
+            let ns = schema.targetNamespace
+
             for element in schema.elements {
-                guard let substitutionGroup = element.substitutionGroup else {
-                    continue
+                let qualKey = Self.makeLookupKey(namespaceURI: ns, localName: element.name)
+                let bareKey = Self.makeLookupKey(namespaceURI: nil, localName: element.name)
+                elemIdx[qualKey] = element
+                if elemIdx[bareKey] == nil { elemIdx[bareKey] = element }
+
+                if let typeQName = element.typeQName {
+                    let binding = _RootBinding(elementName: element.name, namespaceURI: ns)
+                    // Namespace-qualified key
+                    let typeKey = Self.makeLookupKey(namespaceURI: typeQName.namespaceURI, localName: typeQName.localName)
+                    if rootIdx[typeKey] == nil { rootIdx[typeKey] = binding }
+                    // Bare key — replicates the original fallback that scanned all schemas
+                    // by local name only (ignoring the type's namespace).
+                    let bareTypeKey = Self.makeLookupKey(namespaceURI: nil, localName: typeQName.localName)
+                    if rootIdx[bareTypeKey] == nil { rootIdx[bareTypeKey] = binding }
                 }
-                let key = XMLNormalizedSchemaSet.makeLookupKey(
-                    namespaceURI: substitutionGroup.namespaceURI,
-                    localName: substitutionGroup.localName
-                )
-                partialResult[key, default: []].append(element)
+
+                if let sg = element.substitutionGroup {
+                    let sgKey = Self.makeLookupKey(namespaceURI: sg.namespaceURI, localName: sg.localName)
+                    sgIdx[sgKey, default: []].append(element)
+                }
+            }
+
+            for complexType in schema.complexTypes {
+                let qualKey = Self.makeLookupKey(namespaceURI: ns, localName: complexType.name)
+                let bareKey = Self.makeLookupKey(namespaceURI: nil, localName: complexType.name)
+                ctIdx[qualKey] = complexType
+                if ctIdx[bareKey] == nil { ctIdx[bareKey] = complexType }
+
+                // `inheritedComplexTypeQName` is the resolved parent complex type (set by the
+                // normalizer to baseQName for complex-content derivation, or simpleContentBaseQName
+                // when the simple-content base is itself a complex type).
+                let baseKey = complexType.inheritedComplexTypeQName.map {
+                    Self.makeLookupKey(namespaceURI: $0.namespaceURI, localName: $0.localName)
+                }
+                if let key = baseKey {
+                    dcIdx[key, default: []].append(complexType)
+                }
+            }
+
+            for simpleType in schema.simpleTypes {
+                let qualKey = Self.makeLookupKey(namespaceURI: ns, localName: simpleType.name)
+                let bareKey = Self.makeLookupKey(namespaceURI: nil, localName: simpleType.name)
+                stIdx[qualKey] = simpleType
+                if stIdx[bareKey] == nil { stIdx[bareKey] = simpleType }
+
+                if let baseQName = simpleType.baseQName {
+                    let baseKey = Self.makeLookupKey(namespaceURI: baseQName.namespaceURI, localName: baseQName.localName)
+                    dsIdx[baseKey, default: []].append(simpleType)
+                }
+            }
+
+            for attribute in schema.attributeDefinitions {
+                let qualKey = Self.makeLookupKey(namespaceURI: ns, localName: attribute.name)
+                let bareKey = Self.makeLookupKey(namespaceURI: nil, localName: attribute.name)
+                attrIdx[qualKey] = attribute
+                if attrIdx[bareKey] == nil { attrIdx[bareKey] = attribute }
+            }
+
+            for attributeGroup in schema.attributeGroups {
+                let qualKey = Self.makeLookupKey(namespaceURI: ns, localName: attributeGroup.name)
+                let bareKey = Self.makeLookupKey(namespaceURI: nil, localName: attributeGroup.name)
+                agIdx[qualKey] = attributeGroup
+                if agIdx[bareKey] == nil { agIdx[bareKey] = attributeGroup }
+            }
+
+            for modelGroup in schema.modelGroups {
+                let qualKey = Self.makeLookupKey(namespaceURI: ns, localName: modelGroup.name)
+                let bareKey = Self.makeLookupKey(namespaceURI: nil, localName: modelGroup.name)
+                mgIdx[qualKey] = modelGroup
+                if mgIdx[bareKey] == nil { mgIdx[bareKey] = modelGroup }
             }
         }
+
+        elementIndex = elemIdx
+        complexTypeIndex = ctIdx
+        simpleTypeIndex = stIdx
+        attributeIndex = attrIdx
+        attributeGroupIndex = agIdx
+        modelGroupIndex = mgIdx
+        rootElementByTypeIndex = rootIdx
+        substitutionGroupIndex = sgIdx
+        derivedComplexTypeIndex = dcIdx
+        derivedSimpleTypeIndex = dsIdx
     }
 
+    // MARK: - O(1) Component Lookups
+
     public func element(named localName: String, namespaceURI: String?) -> XMLNormalizedElementDeclaration? {
-        if let namespaceURI = namespaceURI {
-            for schema in schemas where schema.targetNamespace == namespaceURI {
-                if let element = schema.elements.first(where: { $0.name == localName }) {
-                    return element
-                }
-            }
+        if let ns = namespaceURI,
+           let result = elementIndex[Self.makeLookupKey(namespaceURI: ns, localName: localName)] {
+            return result
         }
-        for schema in schemas {
-            if let element = schema.elements.first(where: { $0.name == localName }) {
-                return element
-            }
-        }
-        return nil
+        return elementIndex[Self.makeLookupKey(namespaceURI: nil, localName: localName)]
     }
 
     public func complexType(named localName: String, namespaceURI: String?) -> XMLNormalizedComplexType? {
-        if let namespaceURI = namespaceURI {
-            for schema in schemas where schema.targetNamespace == namespaceURI {
-                if let complexType = schema.complexTypes.first(where: { $0.name == localName }) {
-                    return complexType
-                }
-            }
+        if let ns = namespaceURI,
+           let result = complexTypeIndex[Self.makeLookupKey(namespaceURI: ns, localName: localName)] {
+            return result
         }
-        for schema in schemas {
-            if let complexType = schema.complexTypes.first(where: { $0.name == localName }) {
-                return complexType
-            }
-        }
-        return nil
+        return complexTypeIndex[Self.makeLookupKey(namespaceURI: nil, localName: localName)]
     }
 
     public func simpleType(named localName: String, namespaceURI: String?) -> XMLNormalizedSimpleType? {
-        if let namespaceURI = namespaceURI {
-            for schema in schemas where schema.targetNamespace == namespaceURI {
-                if let simpleType = schema.simpleTypes.first(where: { $0.name == localName }) {
-                    return simpleType
-                }
-            }
+        if let ns = namespaceURI,
+           let result = simpleTypeIndex[Self.makeLookupKey(namespaceURI: ns, localName: localName)] {
+            return result
         }
-        for schema in schemas {
-            if let simpleType = schema.simpleTypes.first(where: { $0.name == localName }) {
-                return simpleType
-            }
-        }
-        return nil
+        return simpleTypeIndex[Self.makeLookupKey(namespaceURI: nil, localName: localName)]
     }
 
     public func attribute(named localName: String, namespaceURI: String?) -> XMLNormalizedAttributeDefinition? {
-        if let namespaceURI = namespaceURI {
-            for schema in schemas where schema.targetNamespace == namespaceURI {
-                if let attribute = schema.attributeDefinitions.first(where: { $0.name == localName }) {
-                    return attribute
-                }
-            }
+        if let ns = namespaceURI,
+           let result = attributeIndex[Self.makeLookupKey(namespaceURI: ns, localName: localName)] {
+            return result
         }
-        for schema in schemas {
-            if let attribute = schema.attributeDefinitions.first(where: { $0.name == localName }) {
-                return attribute
-            }
-        }
-        return nil
+        return attributeIndex[Self.makeLookupKey(namespaceURI: nil, localName: localName)]
     }
 
     public func attributeGroup(named localName: String, namespaceURI: String?) -> XMLNormalizedAttributeGroup? {
-        if let namespaceURI = namespaceURI {
-            for schema in schemas where schema.targetNamespace == namespaceURI {
-                if let attributeGroup = schema.attributeGroups.first(where: { $0.name == localName }) {
-                    return attributeGroup
-                }
-            }
+        if let ns = namespaceURI,
+           let result = attributeGroupIndex[Self.makeLookupKey(namespaceURI: ns, localName: localName)] {
+            return result
         }
-        for schema in schemas {
-            if let attributeGroup = schema.attributeGroups.first(where: { $0.name == localName }) {
-                return attributeGroup
-            }
-        }
-        return nil
+        return attributeGroupIndex[Self.makeLookupKey(namespaceURI: nil, localName: localName)]
     }
 
     public func modelGroup(named localName: String, namespaceURI: String?) -> XMLNormalizedModelGroup? {
-        if let namespaceURI = namespaceURI {
-            for schema in schemas where schema.targetNamespace == namespaceURI {
-                if let modelGroup = schema.modelGroups.first(where: { $0.name == localName }) {
-                    return modelGroup
-                }
-            }
+        if let ns = namespaceURI,
+           let result = modelGroupIndex[Self.makeLookupKey(namespaceURI: ns, localName: localName)] {
+            return result
         }
-        for schema in schemas {
-            if let modelGroup = schema.modelGroups.first(where: { $0.name == localName }) {
-                return modelGroup
-            }
-        }
-        return nil
+        return modelGroupIndex[Self.makeLookupKey(namespaceURI: nil, localName: localName)]
     }
 
     public func rootElementBinding(forTypeNamed localName: String, namespaceURI: String?) -> (name: String, namespaceURI: String?)? {
-        if let namespaceURI = namespaceURI {
-            for schema in schemas where schema.targetNamespace == namespaceURI {
-                if let element = schema.elements.first(where: { $0.typeQName?.localName == localName }) {
-                    return (element.name, schema.targetNamespace)
-                }
+        // 1. Exact namespace+localName match
+        if let ns = namespaceURI {
+            let key = Self.makeLookupKey(namespaceURI: ns, localName: localName)
+            if let binding = rootElementByTypeIndex[key] {
+                return (binding.elementName, binding.namespaceURI)
             }
         }
-
-        for schema in schemas {
-            if let element = schema.elements.first(where: { $0.typeQName?.localName == localName }) {
-                return (element.name, schema.targetNamespace)
-            }
+        // 2. Bare fallback — matches any element whose type has this localName (mirrors old O(n) scan)
+        let bareKey = Self.makeLookupKey(namespaceURI: nil, localName: localName)
+        if let binding = rootElementByTypeIndex[bareKey] {
+            return (binding.elementName, binding.namespaceURI)
         }
         return nil
     }
@@ -554,6 +620,49 @@ public struct XMLNormalizedSchemaSet: Sendable, Equatable {
     public func substitutionGroupMembers(ofLocalName localName: String, namespaceURI: String?) -> [XMLNormalizedElementDeclaration] {
         substitutionGroupIndex[Self.makeLookupKey(namespaceURI: namespaceURI, localName: localName)] ?? []
     }
+
+    // MARK: - Type Hierarchy Navigator
+
+    /// Returns the normalized complex type that `complexType` directly derives from, if it exists
+    /// in this schema set. Returns `nil` for root types or types that extend built-in XSD primitives.
+    public func baseComplexType(of complexType: XMLNormalizedComplexType) -> XMLNormalizedComplexType? {
+        guard let qName = complexType.inheritedComplexTypeQName else { return nil }
+        return self.complexType(named: qName.localName, namespaceURI: qName.namespaceURI)
+    }
+
+    /// Returns the normalized simple type that `simpleType` directly derives from, if it exists
+    /// in this schema set. Returns `nil` for types derived from built-in XSD primitives.
+    public func baseSimpleType(of simpleType: XMLNormalizedSimpleType) -> XMLNormalizedSimpleType? {
+        guard let qName = simpleType.baseQName else { return nil }
+        return self.simpleType(named: qName.localName, namespaceURI: qName.namespaceURI)
+    }
+
+    /// Returns all complex types in this schema set that directly extend or restrict `complexType`.
+    public func derivedComplexTypes(of complexType: XMLNormalizedComplexType) -> [XMLNormalizedComplexType] {
+        let key = Self.makeLookupKey(namespaceURI: complexType.namespaceURI, localName: complexType.name)
+        return derivedComplexTypeIndex[key] ?? []
+    }
+
+    /// Returns all simple types in this schema set that directly derive from `simpleType`.
+    public func derivedSimpleTypes(of simpleType: XMLNormalizedSimpleType) -> [XMLNormalizedSimpleType] {
+        let key = Self.makeLookupKey(namespaceURI: simpleType.namespaceURI, localName: simpleType.name)
+        return derivedSimpleTypeIndex[key] ?? []
+    }
+
+    /// Returns `true` if `element` is a direct member of `head`'s substitution group —
+    /// i.e., `element` can appear wherever `head` is referenced in an instance document.
+    ///
+    /// - Note: Only direct membership is checked. Transitive chains
+    ///   (A substitutes B which substitutes C) are deferred to Phase 0.4.
+    public func canSubstitute(
+        _ element: XMLNormalizedElementDeclaration,
+        for head: XMLNormalizedElementDeclaration
+    ) -> Bool {
+        guard let sg = element.substitutionGroup else { return false }
+        return sg.localName == head.name && sg.namespaceURI == head.namespaceURI
+    }
+
+    // MARK: - Private
 
     private static func makeLookupKey(namespaceURI: String?, localName: String) -> String {
         "\(namespaceURI ?? ""):\(localName)"
