@@ -622,7 +622,7 @@ extension XMLSchemaDocumentParser {
         from attributeGroupNodes: [XMLCoderNode],
         contextName: String,
         namespaceMappings: [String: String]
-    ) throws -> [XMLSchemaQName] {
+    ) throws -> [XMLQualifiedName] {
         try attributeGroupNodes.map { attributeGroupNode in
             guard let refQName = try resolveQName(
                 fromQualifiedName: attributeGroupNode.attribute(named: "ref"),
@@ -713,7 +713,7 @@ extension XMLSchemaDocumentParser {
         _ value: String?,
         namespaceMappings: [String: String],
         context: String
-    ) throws -> [XMLSchemaQName] {
+    ) throws -> [XMLQualifiedName] {
         guard let normalizedValue = normalized(value) else {
             return []
         }
@@ -813,7 +813,7 @@ extension XMLSchemaDocumentParser {
                    resolver.complexType(named: baseQName.localName, namespaceURI: baseQName.namespaceURI) == nil {
                     throw XMLSchemaParsingError.unresolvedReference(
                         name: complexType.name,
-                        message: "complexType '\(complexType.name)' extends unknown base type '\(baseQName.rawValue)'."
+                        message: "complexType '\(complexType.name)' extends unknown base type '\(baseQName.qualifiedName)'."
                     )
                 }
 
@@ -823,7 +823,7 @@ extension XMLSchemaDocumentParser {
                    resolver.simpleType(named: baseQName.localName, namespaceURI: baseQName.namespaceURI) == nil {
                     throw XMLSchemaParsingError.unresolvedReference(
                         name: complexType.name,
-                        message: "simpleContent type '\(complexType.name)' extends unknown base '\(baseQName.rawValue)'."
+                        message: "simpleContent type '\(complexType.name)' extends unknown base '\(baseQName.qualifiedName)'."
                     )
                 }
 
@@ -838,7 +838,7 @@ extension XMLSchemaDocumentParser {
                 ) == nil {
                     throw XMLSchemaParsingError.unresolvedReference(
                         name: complexType.name,
-                        message: "attribute reference '\(attributeRef.refQName.rawValue)' could not be resolved."
+                        message: "attribute reference '\(attributeRef.refQName.qualifiedName)' could not be resolved."
                     )
                 }
                 for attributeGroupRef in complexType.attributeGroupRefs
@@ -848,7 +848,7 @@ extension XMLSchemaDocumentParser {
                 ) == nil {
                     throw XMLSchemaParsingError.unresolvedReference(
                         name: complexType.name,
-                        message: "attributeGroup reference '\(attributeGroupRef.rawValue)' could not be resolved."
+                        message: "attributeGroup reference '\(attributeGroupRef.qualifiedName)' could not be resolved."
                     )
                 }
             }
@@ -860,7 +860,7 @@ extension XMLSchemaDocumentParser {
                        resolver.simpleType(named: baseQName.localName, namespaceURI: baseQName.namespaceURI) == nil {
                         throw XMLSchemaParsingError.unresolvedReference(
                             name: simpleType.name,
-                            message: "simpleType '\(simpleType.name)' references unknown base '\(baseQName.rawValue)'."
+                            message: "simpleType '\(simpleType.name)' references unknown base '\(baseQName.qualifiedName)'."
                         )
                     }
                 case .list:
@@ -869,7 +869,7 @@ extension XMLSchemaDocumentParser {
                        resolver.simpleType(named: itemQName.localName, namespaceURI: itemQName.namespaceURI) == nil {
                         throw XMLSchemaParsingError.unresolvedReference(
                             name: simpleType.name,
-                            message: "simpleType '\(simpleType.name)' references unknown list item type '\(itemQName.rawValue)'."
+                            message: "simpleType '\(simpleType.name)' references unknown list item type '\(itemQName.qualifiedName)'."
                         )
                     }
                 case .union:
@@ -878,7 +878,7 @@ extension XMLSchemaDocumentParser {
                         resolver.simpleType(named: memberQName.localName, namespaceURI: memberQName.namespaceURI) == nil {
                         throw XMLSchemaParsingError.unresolvedReference(
                             name: simpleType.name,
-                            message: "simpleType '\(simpleType.name)' references unknown union member '\(memberQName.rawValue)'."
+                            message: "simpleType '\(simpleType.name)' references unknown union member '\(memberQName.qualifiedName)'."
                         )
                     }
                 }
@@ -894,7 +894,7 @@ extension XMLSchemaDocumentParser {
                 ) == nil {
                     throw XMLSchemaParsingError.unresolvedReference(
                         name: attributeGroup.name,
-                        message: "attribute reference '\(attributeRef.refQName.rawValue)' could not be resolved."
+                        message: "attribute reference '\(attributeRef.refQName.qualifiedName)' could not be resolved."
                     )
                 }
                 for nestedRef in attributeGroup.attributeGroupRefs
@@ -904,7 +904,7 @@ extension XMLSchemaDocumentParser {
                 ) == nil {
                     throw XMLSchemaParsingError.unresolvedReference(
                         name: attributeGroup.name,
-                        message: "attributeGroup reference '\(nestedRef.rawValue)' could not be resolved."
+                        message: "attributeGroup reference '\(nestedRef.qualifiedName)' could not be resolved."
                     )
                 }
             }
@@ -930,7 +930,7 @@ extension XMLSchemaDocumentParser {
                 if resolver.modelGroup(named: groupReference.refQName.localName, namespaceURI: groupReference.refQName.namespaceURI) == nil {
                     throw XMLSchemaParsingError.unresolvedReference(
                         name: contextName,
-                        message: "group reference '\(groupReference.refQName.rawValue)' could not be resolved."
+                        message: "group reference '\(groupReference.refQName.qualifiedName)' could not be resolved."
                     )
                 }
             case .wildcard:
@@ -947,7 +947,7 @@ extension XMLSchemaDocumentParser {
            ) == nil {
             throw XMLSchemaParsingError.unresolvedReference(
                 name: element.name,
-                message: "element '\(element.name)' references unknown substitutionGroup '\(substitutionGroup.rawValue)'."
+                message: "element '\(element.name)' references unknown substitutionGroup '\(substitutionGroup.qualifiedName)'."
             )
         }
 
@@ -957,7 +957,7 @@ extension XMLSchemaDocumentParser {
            resolver.simpleType(named: typeQName.localName, namespaceURI: typeQName.namespaceURI) == nil {
             throw XMLSchemaParsingError.unresolvedReference(
                 name: element.name,
-                message: "element '\(element.name)' references unknown type '\(typeQName.rawValue)'."
+                message: "element '\(element.name)' references unknown type '\(typeQName.qualifiedName)'."
             )
         }
 
@@ -965,7 +965,7 @@ extension XMLSchemaDocumentParser {
            resolver.element(named: refQName.localName, namespaceURI: refQName.namespaceURI ?? schema.targetNamespace) == nil {
             throw XMLSchemaParsingError.unresolvedReference(
                 name: element.name,
-                message: "element '\(element.name)' references unknown element '\(refQName.rawValue)'."
+                message: "element '\(element.name)' references unknown element '\(refQName.qualifiedName)'."
             )
         }
 
@@ -984,7 +984,7 @@ extension XMLSchemaDocumentParser {
            resolver.complexType(named: typeQName.localName, namespaceURI: typeQName.namespaceURI) == nil {
             throw XMLSchemaParsingError.unresolvedReference(
                 name: contextName,
-                message: "attribute '\(attribute.name)' references unknown type '\(typeQName.rawValue)'."
+                message: "attribute '\(attribute.name)' references unknown type '\(typeQName.qualifiedName)'."
             )
         }
         if let inlineSimpleType = attribute.inlineSimpleType {
@@ -1003,7 +1003,7 @@ extension XMLSchemaDocumentParser {
            resolver.complexType(named: baseQName.localName, namespaceURI: baseQName.namespaceURI) == nil {
             throw XMLSchemaParsingError.unresolvedReference(
                 name: contextName,
-                message: "anonymous complexType references unknown base '\(baseQName.rawValue)'."
+                message: "anonymous complexType references unknown base '\(baseQName.qualifiedName)'."
             )
         }
 
@@ -1013,7 +1013,7 @@ extension XMLSchemaDocumentParser {
            resolver.simpleType(named: baseQName.localName, namespaceURI: baseQName.namespaceURI) == nil {
             throw XMLSchemaParsingError.unresolvedReference(
                 name: contextName,
-                message: "anonymous simpleContent references unknown base '\(baseQName.rawValue)'."
+                message: "anonymous simpleContent references unknown base '\(baseQName.qualifiedName)'."
             )
         }
 
@@ -1025,14 +1025,14 @@ extension XMLSchemaDocumentParser {
         where resolver.attribute(named: attributeRef.refQName.localName, namespaceURI: attributeRef.refQName.namespaceURI) == nil {
             throw XMLSchemaParsingError.unresolvedReference(
                 name: contextName,
-                message: "attribute reference '\(attributeRef.refQName.rawValue)' could not be resolved."
+                message: "attribute reference '\(attributeRef.refQName.qualifiedName)' could not be resolved."
             )
         }
         for attributeGroupRef in complexType.attributeGroupRefs
         where resolver.attributeGroup(named: attributeGroupRef.localName, namespaceURI: attributeGroupRef.namespaceURI) == nil {
             throw XMLSchemaParsingError.unresolvedReference(
                 name: contextName,
-                message: "attributeGroup reference '\(attributeGroupRef.rawValue)' could not be resolved."
+                message: "attributeGroup reference '\(attributeGroupRef.qualifiedName)' could not be resolved."
             )
         }
     }
@@ -1049,7 +1049,7 @@ extension XMLSchemaDocumentParser {
                resolver.simpleType(named: baseQName.localName, namespaceURI: baseQName.namespaceURI) == nil {
                 throw XMLSchemaParsingError.unresolvedReference(
                     name: contextName,
-                    message: "anonymous simpleType references unknown base '\(baseQName.rawValue)'."
+                    message: "anonymous simpleType references unknown base '\(baseQName.qualifiedName)'."
                 )
             }
         case .list:
@@ -1058,7 +1058,7 @@ extension XMLSchemaDocumentParser {
                resolver.simpleType(named: itemQName.localName, namespaceURI: itemQName.namespaceURI) == nil {
                 throw XMLSchemaParsingError.unresolvedReference(
                     name: contextName,
-                    message: "anonymous simpleType references unknown list item '\(itemQName.rawValue)'."
+                    message: "anonymous simpleType references unknown list item '\(itemQName.qualifiedName)'."
                 )
             }
         case .union:
@@ -1067,7 +1067,7 @@ extension XMLSchemaDocumentParser {
                 resolver.simpleType(named: memberQName.localName, namespaceURI: memberQName.namespaceURI) == nil {
                 throw XMLSchemaParsingError.unresolvedReference(
                     name: contextName,
-                    message: "anonymous simpleType references unknown union member '\(memberQName.rawValue)'."
+                    message: "anonymous simpleType references unknown union member '\(memberQName.qualifiedName)'."
                 )
             }
             for memberSimpleType in simpleType.unionInlineSimpleTypes {
@@ -1088,7 +1088,7 @@ extension XMLSchemaDocumentParser {
         fromQualifiedName value: String?,
         namespaceMappings: [String: String],
         context: String
-    ) throws -> XMLSchemaQName? {
+    ) throws -> XMLQualifiedName? {
         guard let normalizedValue = normalized(value) else {
             return nil
         }
@@ -1104,23 +1104,20 @@ extension XMLSchemaDocumentParser {
                 throw XMLSchemaParsingError.invalidDocument(message: "Unknown namespace prefix '\(prefix)' for \(context) in '\(normalizedValue)'.")
             }
 
-            return XMLSchemaQName(
-                rawValue: normalizedValue,
-                prefix: prefix,
+            return XMLQualifiedName(
                 localName: localName,
-                namespaceURI: namespaceURI
+                namespaceURI: namespaceURI,
+                prefix: prefix
             )
         }
 
-        return XMLSchemaQName(
-            rawValue: normalizedValue,
-            prefix: nil,
+        return XMLQualifiedName(
             localName: normalizedValue,
             namespaceURI: namespaceMappings[""]
         )
     }
 
-    private func isXMLSchemaBuiltIn(_ qName: XMLSchemaQName) -> Bool {
+    private func isXMLSchemaBuiltIn(_ qName: XMLQualifiedName) -> Bool {
         if qName.namespaceURI == "http://www.w3.org/2001/XMLSchema" {
             return true
         }

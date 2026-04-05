@@ -1,4 +1,5 @@
 import Foundation
+import SwiftXMLCoder
 // swiftlint:disable file_length
 
 public struct XMLSchemaComponentID: Sendable, Equatable, Hashable, Codable {
@@ -20,12 +21,12 @@ public struct XMLNormalizedElementDeclaration: Sendable, Equatable {
     public let annotation: XMLSchemaAnnotation?
     public let name: String
     public let namespaceURI: String?
-    public let typeQName: XMLSchemaQName?
+    public let typeQName: XMLQualifiedName?
     public let nillable: Bool
     public let defaultValue: String?
     public let fixedValue: String?
     public let isAbstract: Bool
-    public let substitutionGroup: XMLSchemaQName?
+    public let substitutionGroup: XMLQualifiedName?
     public let occurrenceBounds: XMLSchemaOccurrenceBounds
 
     public init(
@@ -33,12 +34,12 @@ public struct XMLNormalizedElementDeclaration: Sendable, Equatable {
         annotation: XMLSchemaAnnotation?,
         name: String,
         namespaceURI: String?,
-        typeQName: XMLSchemaQName?,
+        typeQName: XMLQualifiedName?,
         nillable: Bool,
         defaultValue: String?,
         fixedValue: String?,
         isAbstract: Bool,
-        substitutionGroup: XMLSchemaQName?,
+        substitutionGroup: XMLQualifiedName?,
         occurrenceBounds: XMLSchemaOccurrenceBounds
     ) {
         self.componentID = componentID
@@ -60,12 +61,12 @@ public struct XMLNormalizedElementUse: Sendable, Equatable {
     public let annotation: XMLSchemaAnnotation?
     public let name: String
     public let namespaceURI: String?
-    public let typeQName: XMLSchemaQName?
+    public let typeQName: XMLQualifiedName?
     public let nillable: Bool
     public let defaultValue: String?
     public let fixedValue: String?
     public let isAbstract: Bool
-    public let substitutionGroup: XMLSchemaQName?
+    public let substitutionGroup: XMLQualifiedName?
     public let occurrenceBounds: XMLSchemaOccurrenceBounds
 
     public init(
@@ -73,12 +74,12 @@ public struct XMLNormalizedElementUse: Sendable, Equatable {
         annotation: XMLSchemaAnnotation?,
         name: String,
         namespaceURI: String?,
-        typeQName: XMLSchemaQName?,
+        typeQName: XMLQualifiedName?,
         nillable: Bool,
         defaultValue: String?,
         fixedValue: String?,
         isAbstract: Bool,
-        substitutionGroup: XMLSchemaQName?,
+        substitutionGroup: XMLQualifiedName?,
         occurrenceBounds: XMLSchemaOccurrenceBounds
     ) {
         self.componentID = componentID
@@ -131,7 +132,7 @@ public struct XMLNormalizedAttributeDefinition: Sendable, Equatable {
     public let annotation: XMLSchemaAnnotation?
     public let name: String
     public let namespaceURI: String?
-    public let typeQName: XMLSchemaQName?
+    public let typeQName: XMLQualifiedName?
     public let use: String?
     public let defaultValue: String?
     public let fixedValue: String?
@@ -141,7 +142,7 @@ public struct XMLNormalizedAttributeDefinition: Sendable, Equatable {
         annotation: XMLSchemaAnnotation?,
         name: String,
         namespaceURI: String?,
-        typeQName: XMLSchemaQName?,
+        typeQName: XMLQualifiedName?,
         use: String?,
         defaultValue: String?,
         fixedValue: String?
@@ -162,7 +163,7 @@ public struct XMLNormalizedAttributeUse: Sendable, Equatable {
     public let annotation: XMLSchemaAnnotation?
     public let name: String
     public let namespaceURI: String?
-    public let typeQName: XMLSchemaQName?
+    public let typeQName: XMLQualifiedName?
     public let use: String?
     public let defaultValue: String?
     public let fixedValue: String?
@@ -172,7 +173,7 @@ public struct XMLNormalizedAttributeUse: Sendable, Equatable {
         annotation: XMLSchemaAnnotation?,
         name: String,
         namespaceURI: String?,
-        typeQName: XMLSchemaQName?,
+        typeQName: XMLQualifiedName?,
         use: String?,
         defaultValue: String?,
         fixedValue: String?
@@ -252,26 +253,26 @@ public struct XMLNormalizedSimpleType: Sendable, Equatable {
     public let annotation: XMLSchemaAnnotation?
     public let name: String
     public let namespaceURI: String?
-    public let baseQName: XMLSchemaQName?
+    public let baseQName: XMLQualifiedName?
     public let enumerationValues: [String]
     public let pattern: String?
     public let facets: XMLSchemaFacetSet?
     public let derivationKind: XMLSchemaSimpleTypeDerivationKind
-    public let listItemQName: XMLSchemaQName?
-    public let unionMemberQNames: [XMLSchemaQName]
+    public let listItemQName: XMLQualifiedName?
+    public let unionMemberQNames: [XMLQualifiedName]
 
     public init(
         componentID: XMLSchemaComponentID,
         annotation: XMLSchemaAnnotation?,
         name: String,
         namespaceURI: String?,
-        baseQName: XMLSchemaQName?,
+        baseQName: XMLQualifiedName?,
         enumerationValues: [String],
         pattern: String?,
         facets: XMLSchemaFacetSet?,
         derivationKind: XMLSchemaSimpleTypeDerivationKind,
-        listItemQName: XMLSchemaQName?,
-        unionMemberQNames: [XMLSchemaQName]
+        listItemQName: XMLQualifiedName?,
+        unionMemberQNames: [XMLQualifiedName]
     ) {
         self.componentID = componentID
         self.annotation = annotation
@@ -292,12 +293,12 @@ public struct XMLNormalizedComplexType: Sendable, Equatable {
     public let annotation: XMLSchemaAnnotation?
     public let name: String
     public let namespaceURI: String?
-    public let baseQName: XMLSchemaQName?
+    public let baseQName: XMLQualifiedName?
     public let baseDerivationKind: XMLSchemaContentDerivationKind?
-    public let simpleContentBaseQName: XMLSchemaQName?
+    public let simpleContentBaseQName: XMLQualifiedName?
     public let simpleContentDerivationKind: XMLSchemaContentDerivationKind?
-    public let inheritedComplexTypeQName: XMLSchemaQName?
-    public let effectiveSimpleContentValueTypeQName: XMLSchemaQName?
+    public let inheritedComplexTypeQName: XMLQualifiedName?
+    public let effectiveSimpleContentValueTypeQName: XMLQualifiedName?
     public let declaredContent: [XMLNormalizedContentNode]
     public let effectiveContent: [XMLNormalizedContentNode]
     public let declaredAttributes: [XMLNormalizedAttributeUse]
@@ -353,12 +354,12 @@ public struct XMLNormalizedComplexType: Sendable, Equatable {
         annotation: XMLSchemaAnnotation?,
         name: String,
         namespaceURI: String?,
-        baseQName: XMLSchemaQName?,
+        baseQName: XMLQualifiedName?,
         baseDerivationKind: XMLSchemaContentDerivationKind?,
-        simpleContentBaseQName: XMLSchemaQName?,
+        simpleContentBaseQName: XMLQualifiedName?,
         simpleContentDerivationKind: XMLSchemaContentDerivationKind?,
-        inheritedComplexTypeQName: XMLSchemaQName?,
-        effectiveSimpleContentValueTypeQName: XMLSchemaQName?,
+        inheritedComplexTypeQName: XMLQualifiedName?,
+        effectiveSimpleContentValueTypeQName: XMLQualifiedName?,
         declaredContent: [XMLNormalizedContentNode],
         effectiveContent: [XMLNormalizedContentNode],
         declaredAttributes: [XMLNormalizedAttributeUse],
@@ -746,17 +747,17 @@ private extension XMLSchemaNormalizer {
         let annotation: XMLSchemaAnnotation?
         let name: String
         let namespaceURI: String?
-        let typeQName: XMLSchemaQName?
+        let typeQName: XMLQualifiedName?
         let nillable: Bool
         let defaultValue: String?
         let fixedValue: String?
         let isAbstract: Bool
-        let substitutionGroup: XMLSchemaQName?
+        let substitutionGroup: XMLQualifiedName?
     }
 
     struct ResolvedComplexTypeDerivation {
-        let inheritedComplexTypeQName: XMLSchemaQName?
-        let effectiveSimpleContentValueTypeQName: XMLSchemaQName?
+        let inheritedComplexTypeQName: XMLQualifiedName?
+        let effectiveSimpleContentValueTypeQName: XMLQualifiedName?
         let effectiveContent: [XMLNormalizedContentNode]
         let effectiveAttributes: [XMLNormalizedAttributeUse]
     }
@@ -1279,8 +1280,8 @@ private extension XMLSchemaNormalizer {
             return resolved
         }
 
-        private func makeQName(localName: String, namespaceURI: String?) -> XMLSchemaQName {
-            XMLSchemaQName(rawValue: localName, prefix: nil, localName: localName, namespaceURI: namespaceURI)
+        private func makeQName(localName: String, namespaceURI: String?) -> XMLQualifiedName {
+            XMLQualifiedName(localName: localName, namespaceURI: namespaceURI)
         }
 
         private func makeNamedSimpleType(
@@ -1514,7 +1515,7 @@ private extension XMLSchemaNormalizer {
             case let .groupReference(groupReference):
                 let groupKey = makeLookupKey(namespaceURI: groupReference.refQName.namespaceURI ?? namespaceURI, localName: groupReference.refQName.localName)
                 guard visitedGroupKeys.insert(groupKey).inserted else {
-                    throw XMLSchemaParsingError.other(message: "Cyclic group reference detected for '\(groupReference.refQName.rawValue)'.")
+                    throw XMLSchemaParsingError.other(message: "Cyclic group reference detected for '\(groupReference.refQName.qualifiedName)'.")
                 }
                 defer { visitedGroupKeys.remove(groupKey) }
 
@@ -1524,7 +1525,7 @@ private extension XMLSchemaNormalizer {
                 ) else {
                     throw XMLSchemaParsingError.unresolvedReference(
                         name: groupReference.refQName.localName,
-                        message: "group reference '\(groupReference.refQName.rawValue)' could not be resolved."
+                        message: "group reference '\(groupReference.refQName.qualifiedName)' could not be resolved."
                     )
                 }
 
@@ -1545,7 +1546,7 @@ private extension XMLSchemaNormalizer {
     private func resolveAttributeUses(
         attributes: [XMLSchemaAttribute],
         attributeRefs: [XMLSchemaAttributeReference],
-        attributeGroupRefs: [XMLSchemaQName],
+        attributeGroupRefs: [XMLQualifiedName],
         namespaceURI: String?,
         resolver: RawNormalizationResolver,
         contextPath: [String],
@@ -1575,7 +1576,7 @@ private extension XMLSchemaNormalizer {
             ) else {
                 throw XMLSchemaParsingError.unresolvedReference(
                     name: attributeRef.refQName.localName,
-                    message: "attribute reference '\(attributeRef.refQName.rawValue)' could not be resolved."
+                    message: "attribute reference '\(attributeRef.refQName.qualifiedName)' could not be resolved."
                 )
             }
             resolved.append(
@@ -1600,14 +1601,14 @@ private extension XMLSchemaNormalizer {
             let groupNamespaceURI = attributeGroupRef.namespaceURI ?? namespaceURI
             let groupKey = makeLookupKey(namespaceURI: groupNamespaceURI, localName: attributeGroupRef.localName)
             guard visitedGroupKeys.insert(groupKey).inserted else {
-                throw XMLSchemaParsingError.other(message: "Cyclic attributeGroup reference detected for '\(attributeGroupRef.rawValue)'.")
+                throw XMLSchemaParsingError.other(message: "Cyclic attributeGroup reference detected for '\(attributeGroupRef.qualifiedName)'.")
             }
             defer { visitedGroupKeys.remove(groupKey) }
 
             guard let attributeGroup = resolver.attributeGroup(named: attributeGroupRef.localName, namespaceURI: groupNamespaceURI) else {
                 throw XMLSchemaParsingError.unresolvedReference(
                     name: attributeGroupRef.localName,
-                    message: "attributeGroup reference '\(attributeGroupRef.rawValue)' could not be resolved."
+                    message: "attributeGroup reference '\(attributeGroupRef.qualifiedName)' could not be resolved."
                 )
             }
             resolved.append(
@@ -1672,7 +1673,7 @@ private extension XMLSchemaNormalizer {
         var effectiveContent = declaredContent
         var effectiveAttributes = declaredAttributes
         var inheritedComplexTypeQName = complexType.baseQName
-        var effectiveSimpleContentValueTypeQName: XMLSchemaQName?
+        var effectiveSimpleContentValueTypeQName: XMLQualifiedName?
 
         if let baseQName = complexType.baseQName {
             guard let baseComplexType = resolver.complexType(
@@ -1681,7 +1682,7 @@ private extension XMLSchemaNormalizer {
             ) else {
                 throw XMLSchemaParsingError.unresolvedReference(
                     name: complexType.name,
-                    message: "complexType '\(complexType.name)' extends unknown base type '\(baseQName.rawValue)'."
+                    message: "complexType '\(complexType.name)' extends unknown base type '\(baseQName.qualifiedName)'."
                 )
             }
             let baseNormalized = try normalizeComplexType(

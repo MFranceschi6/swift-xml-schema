@@ -1,4 +1,5 @@
 import Foundation
+import SwiftXMLCoder
 
 public struct XMLSchemaSet: Sendable, Equatable {
     public let schemas: [XMLSchema]
@@ -9,20 +10,6 @@ public struct XMLSchemaSet: Sendable, Equatable {
 
     public func merging(_ other: XMLSchemaSet) -> XMLSchemaSet {
         XMLSchemaSet(schemas: schemas + other.schemas)
-    }
-}
-
-public struct XMLSchemaQName: Sendable, Equatable, Hashable, Codable {
-    public let rawValue: String
-    public let prefix: String?
-    public let localName: String
-    public let namespaceURI: String?
-
-    public init(rawValue: String, prefix: String?, localName: String, namespaceURI: String?) {
-        self.rawValue = rawValue
-        self.prefix = prefix
-        self.localName = localName
-        self.namespaceURI = namespaceURI
     }
 }
 
@@ -104,11 +91,11 @@ public struct XMLSchemaWildcard: Sendable, Equatable, Codable {
 }
 
 public struct XMLSchemaGroupReference: Sendable, Equatable, Codable {
-    public let refQName: XMLSchemaQName
+    public let refQName: XMLQualifiedName
     public let minOccurs: Int?
     public let maxOccurs: String?
 
-    public init(refQName: XMLSchemaQName, minOccurs: Int? = nil, maxOccurs: String? = nil) {
+    public init(refQName: XMLQualifiedName, minOccurs: Int? = nil, maxOccurs: String? = nil) {
         self.refQName = refQName
         self.minOccurs = minOccurs
         self.maxOccurs = maxOccurs
@@ -128,24 +115,24 @@ public enum XMLSchemaContentNode: Sendable, Equatable {
 
 public struct XMLSchemaAnonymousSimpleType: Sendable, Equatable {
     public let annotation: XMLSchemaAnnotation?
-    public let baseQName: XMLSchemaQName?
+    public let baseQName: XMLQualifiedName?
     public let enumerationValues: [String]
     public let pattern: String?
     public let facets: XMLSchemaFacetSet?
     public let derivationKind: XMLSchemaSimpleTypeDerivationKind
-    public let listItemQName: XMLSchemaQName?
-    public let unionMemberQNames: [XMLSchemaQName]
+    public let listItemQName: XMLQualifiedName?
+    public let unionMemberQNames: [XMLQualifiedName]
     public let unionInlineSimpleTypes: [XMLSchemaAnonymousSimpleType]
 
     public init(
         annotation: XMLSchemaAnnotation? = nil,
-        baseQName: XMLSchemaQName?,
+        baseQName: XMLQualifiedName?,
         enumerationValues: [String],
         pattern: String?,
         facets: XMLSchemaFacetSet? = nil,
         derivationKind: XMLSchemaSimpleTypeDerivationKind = .restriction,
-        listItemQName: XMLSchemaQName? = nil,
-        unionMemberQNames: [XMLSchemaQName] = [],
+        listItemQName: XMLQualifiedName? = nil,
+        unionMemberQNames: [XMLQualifiedName] = [],
         unionInlineSimpleTypes: [XMLSchemaAnonymousSimpleType] = []
     ) {
         self.annotation = annotation
@@ -162,15 +149,15 @@ public struct XMLSchemaAnonymousSimpleType: Sendable, Equatable {
 
 public struct XMLSchemaAnonymousComplexType: Sendable, Equatable {
     public let annotation: XMLSchemaAnnotation?
-    public let baseQName: XMLSchemaQName?
+    public let baseQName: XMLQualifiedName?
     public let baseDerivationKind: XMLSchemaContentDerivationKind?
-    public let simpleContentBaseQName: XMLSchemaQName?
+    public let simpleContentBaseQName: XMLQualifiedName?
     public let simpleContentDerivationKind: XMLSchemaContentDerivationKind?
     public let isAbstract: Bool
     public let content: [XMLSchemaContentNode]
     public let attributes: [XMLSchemaAttribute]
     public let attributeRefs: [XMLSchemaAttributeReference]
-    public let attributeGroupRefs: [XMLSchemaQName]
+    public let attributeGroupRefs: [XMLQualifiedName]
     public let anyAttribute: XMLSchemaWildcard?
 
     public var sequence: [XMLSchemaElement] {
@@ -203,9 +190,9 @@ public struct XMLSchemaAnonymousComplexType: Sendable, Equatable {
 
     public init(
         annotation: XMLSchemaAnnotation? = nil,
-        baseQName: XMLSchemaQName? = nil,
+        baseQName: XMLQualifiedName? = nil,
         baseDerivationKind: XMLSchemaContentDerivationKind? = nil,
-        simpleContentBaseQName: XMLSchemaQName? = nil,
+        simpleContentBaseQName: XMLQualifiedName? = nil,
         simpleContentDerivationKind: XMLSchemaContentDerivationKind? = nil,
         isAbstract: Bool = false,
         sequence: [XMLSchemaElement] = [],
@@ -215,7 +202,7 @@ public struct XMLSchemaAnonymousComplexType: Sendable, Equatable {
         content: [XMLSchemaContentNode]? = nil,
         attributes: [XMLSchemaAttribute],
         attributeRefs: [XMLSchemaAttributeReference] = [],
-        attributeGroupRefs: [XMLSchemaQName] = [],
+        attributeGroupRefs: [XMLQualifiedName] = [],
         anyAttribute: XMLSchemaWildcard? = nil
     ) {
         self.annotation = annotation
@@ -307,15 +294,15 @@ public struct XMLSchemaInclude: Sendable, Equatable {
 public struct XMLSchemaElement: Sendable, Equatable {
     public let annotation: XMLSchemaAnnotation?
     public let name: String
-    public let typeQName: XMLSchemaQName?
-    public let refQName: XMLSchemaQName?
+    public let typeQName: XMLQualifiedName?
+    public let refQName: XMLQualifiedName?
     public let minOccurs: Int?
     public let maxOccurs: String?
     public let nillable: Bool
     public let defaultValue: String?
     public let fixedValue: String?
     public let isAbstract: Bool
-    public let substitutionGroup: XMLSchemaQName?
+    public let substitutionGroup: XMLQualifiedName?
     public let inlineComplexType: XMLSchemaAnonymousComplexType?
     public let inlineSimpleType: XMLSchemaAnonymousSimpleType?
 
@@ -330,15 +317,15 @@ public struct XMLSchemaElement: Sendable, Equatable {
     public init(
         annotation: XMLSchemaAnnotation? = nil,
         name: String,
-        typeQName: XMLSchemaQName?,
-        refQName: XMLSchemaQName?,
+        typeQName: XMLQualifiedName?,
+        refQName: XMLQualifiedName?,
         minOccurs: Int?,
         maxOccurs: String?,
         nillable: Bool,
         defaultValue: String? = nil,
         fixedValue: String? = nil,
         isAbstract: Bool = false,
-        substitutionGroup: XMLSchemaQName? = nil,
+        substitutionGroup: XMLQualifiedName? = nil,
         inlineSequenceElements: [XMLSchemaElement] = [],
         inlineComplexType: XMLSchemaAnonymousComplexType? = nil,
         inlineSimpleType: XMLSchemaAnonymousSimpleType? = nil
@@ -371,15 +358,15 @@ public struct XMLSchemaElement: Sendable, Equatable {
 public struct XMLSchemaComplexType: Sendable, Equatable {
     public let annotation: XMLSchemaAnnotation?
     public let name: String
-    public let baseQName: XMLSchemaQName?
+    public let baseQName: XMLQualifiedName?
     public let baseDerivationKind: XMLSchemaContentDerivationKind?
-    public let simpleContentBaseQName: XMLSchemaQName?
+    public let simpleContentBaseQName: XMLQualifiedName?
     public let simpleContentDerivationKind: XMLSchemaContentDerivationKind?
     public let isAbstract: Bool
     public let content: [XMLSchemaContentNode]
     public let attributes: [XMLSchemaAttribute]
     public let attributeRefs: [XMLSchemaAttributeReference]
-    public let attributeGroupRefs: [XMLSchemaQName]
+    public let attributeGroupRefs: [XMLQualifiedName]
     public let anyAttribute: XMLSchemaWildcard?
 
     public var sequence: [XMLSchemaElement] {
@@ -417,9 +404,9 @@ public struct XMLSchemaComplexType: Sendable, Equatable {
     public init(
         annotation: XMLSchemaAnnotation? = nil,
         name: String,
-        baseQName: XMLSchemaQName? = nil,
+        baseQName: XMLQualifiedName? = nil,
         baseDerivationKind: XMLSchemaContentDerivationKind? = nil,
-        simpleContentBaseQName: XMLSchemaQName? = nil,
+        simpleContentBaseQName: XMLQualifiedName? = nil,
         simpleContentDerivationKind: XMLSchemaContentDerivationKind? = nil,
         isAbstract: Bool = false,
         sequence: [XMLSchemaElement],
@@ -430,7 +417,7 @@ public struct XMLSchemaComplexType: Sendable, Equatable {
         content: [XMLSchemaContentNode]? = nil,
         attributes: [XMLSchemaAttribute],
         attributeRefs: [XMLSchemaAttributeReference] = [],
-        attributeGroupRefs: [XMLSchemaQName] = [],
+        attributeGroupRefs: [XMLQualifiedName] = [],
         anyAttribute: XMLSchemaWildcard? = nil
     ) {
         self.annotation = annotation
@@ -622,25 +609,25 @@ public struct XMLSchemaFacetSet: Sendable, Equatable {
 public struct XMLSchemaSimpleType: Sendable, Equatable {
     public let annotation: XMLSchemaAnnotation?
     public let name: String
-    public let baseQName: XMLSchemaQName?
+    public let baseQName: XMLQualifiedName?
     public let enumerationValues: [String]
     public let pattern: String?
     public let facets: XMLSchemaFacetSet?
     public let derivationKind: XMLSchemaSimpleTypeDerivationKind
-    public let listItemQName: XMLSchemaQName?
-    public let unionMemberQNames: [XMLSchemaQName]
+    public let listItemQName: XMLQualifiedName?
+    public let unionMemberQNames: [XMLQualifiedName]
     public let unionInlineSimpleTypes: [XMLSchemaAnonymousSimpleType]
 
     public init(
         annotation: XMLSchemaAnnotation? = nil,
         name: String,
-        baseQName: XMLSchemaQName?,
+        baseQName: XMLQualifiedName?,
         enumerationValues: [String],
         pattern: String?,
         facets: XMLSchemaFacetSet? = nil,
         derivationKind: XMLSchemaSimpleTypeDerivationKind = .restriction,
-        listItemQName: XMLSchemaQName? = nil,
-        unionMemberQNames: [XMLSchemaQName] = [],
+        listItemQName: XMLQualifiedName? = nil,
+        unionMemberQNames: [XMLQualifiedName] = [],
         unionInlineSimpleTypes: [XMLSchemaAnonymousSimpleType] = []
     ) {
         self.annotation = annotation
@@ -659,7 +646,7 @@ public struct XMLSchemaSimpleType: Sendable, Equatable {
 public struct XMLSchemaAttribute: Sendable, Equatable {
     public let annotation: XMLSchemaAnnotation?
     public let name: String
-    public let typeQName: XMLSchemaQName?
+    public let typeQName: XMLQualifiedName?
     public let use: String?
     public let defaultValue: String?
     public let fixedValue: String?
@@ -668,7 +655,7 @@ public struct XMLSchemaAttribute: Sendable, Equatable {
     public init(
         annotation: XMLSchemaAnnotation? = nil,
         name: String,
-        typeQName: XMLSchemaQName?,
+        typeQName: XMLQualifiedName?,
         use: String?,
         defaultValue: String? = nil,
         fixedValue: String? = nil,
@@ -685,14 +672,14 @@ public struct XMLSchemaAttribute: Sendable, Equatable {
 }
 
 public struct XMLSchemaAttributeReference: Sendable, Equatable {
-    public let refQName: XMLSchemaQName
+    public let refQName: XMLQualifiedName
     public let use: String?
     public let defaultValue: String?
     public let fixedValue: String?
     public let annotation: XMLSchemaAnnotation?
 
     public init(
-        refQName: XMLSchemaQName,
+        refQName: XMLQualifiedName,
         use: String? = nil,
         defaultValue: String? = nil,
         fixedValue: String? = nil,
@@ -710,13 +697,13 @@ public struct XMLSchemaAttributeGroup: Sendable, Equatable {
     public let name: String
     public let attributes: [XMLSchemaAttribute]
     public let attributeRefs: [XMLSchemaAttributeReference]
-    public let attributeGroupRefs: [XMLSchemaQName]
+    public let attributeGroupRefs: [XMLQualifiedName]
 
     public init(
         name: String,
         attributes: [XMLSchemaAttribute],
         attributeRefs: [XMLSchemaAttributeReference] = [],
-        attributeGroupRefs: [XMLSchemaQName] = []
+        attributeGroupRefs: [XMLQualifiedName] = []
     ) {
         self.name = name
         self.attributes = attributes

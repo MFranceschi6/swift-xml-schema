@@ -1,4 +1,5 @@
 import Foundation
+import SwiftXMLCoder
 import SwiftXMLSchema
 import XCTest
 // swiftlint:disable function_body_length optional_data_string_conversion
@@ -7,11 +8,10 @@ final class XMLSchemaCoverageBoostTests: XCTestCase {
     func test_rawModelTypes_exposeComputedViewsAndInitializers() {
         let annotation = XMLSchemaAnnotation(documentation: ["Docs"], appinfo: ["Meta"])
         let emptyAnnotation = XMLSchemaAnnotation()
-        let builtQName = XMLSchemaQName(
-            rawValue: "tns:Value",
-            prefix: "tns",
+        let builtQName = XMLQualifiedName(
             localName: "Value",
-            namespaceURI: "urn:test"
+            namespaceURI: "urn:test",
+            prefix: "tns"
         )
         let defaultBounds = XMLSchemaOccurrenceBounds.from(minOccurs: nil, maxOccurs: nil)
         let unboundedBounds = XMLSchemaOccurrenceBounds.from(minOccurs: 2, maxOccurs: "unbounded")
@@ -152,7 +152,7 @@ final class XMLSchemaCoverageBoostTests: XCTestCase {
         XCTAssertNil(wildcard.occurrenceBounds.maxOccurs)
         XCTAssertEqual(groupReference.occurrenceBounds.maxOccurs, 2)
         XCTAssertEqual(choice.elements.map(\.name), ["child"])
-        XCTAssertEqual(choice.groupReferences.map(\.refQName.rawValue), ["tns:Value"])
+        XCTAssertEqual(choice.groupReferences.map(\.refQName.qualifiedName), ["tns:Value"])
         XCTAssertEqual(choice.anyElements.first?.namespaceConstraint, "##other")
         XCTAssertEqual(choice.occurrenceBounds.minOccurs, 0)
         XCTAssertEqual(anonymousComplexType.sequence.map(\.name), ["child"])
@@ -178,7 +178,7 @@ final class XMLSchemaCoverageBoostTests: XCTestCase {
     func test_normalizedTypes_andLookupApis_coverFallbackPaths() {
         let annotation = XMLSchemaAnnotation(documentation: ["Docs"], appinfo: ["Meta"])
         let componentID = XMLSchemaComponentID(rawValue: "component")
-        let qName = XMLSchemaQName(rawValue: "tns:Animal", prefix: "tns", localName: "Animal", namespaceURI: "urn:animals")
+        let qName = XMLQualifiedName(localName: "Animal", namespaceURI: "urn:animals", prefix: "tns")
         let elementUse = XMLNormalizedElementUse(
             componentID: componentID,
             annotation: annotation,

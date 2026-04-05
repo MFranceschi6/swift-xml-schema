@@ -44,7 +44,7 @@ Tutti e 5 gli item erano già implementati nel bootstrap. Archiviato in `.claude
 
 ---
 
-## Phase 0.3 — Component Model, Visitor e Traversal API (Swift 5.7)
+## Phase 0.3 — Component Model, Visitor e Traversal API (Swift 5.7) ✅ COMPLETATA (2026-04-05)
 
 **Obiettivo:** Trasformare la normalizzazione in un vero **component model** navigabile (ispirato a Xerces XS API e .NET `XmlSchemaSet.Compile()`), con API protocol-oriented per traversal.
 
