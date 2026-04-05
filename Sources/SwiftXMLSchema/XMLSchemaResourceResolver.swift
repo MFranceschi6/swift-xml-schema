@@ -1,4 +1,9 @@
 import Foundation
+import SwiftXMLCoder
+// On Linux, URLSession/URLRequest live in FoundationNetworking, not Foundation.
+#if canImport(FoundationNetworking)
+import FoundationNetworking
+#endif
 
 // Mutable reference box used to pass a Result value across a DispatchSemaphore
 // boundary without triggering Swift 6 captured-var concurrency warnings.
@@ -124,7 +129,8 @@ public struct RemoteXMLSchemaResourceResolver: XMLSchemaResourceResolver {
             )
         }
 
-        var request = URLRequest(url: url, timeoutInterval: timeout)
+        var request = URLRequest(url: url)
+        request.timeoutInterval = timeout
         request.httpMethod = "GET"
 
         // Use a class-based box so the URLSession callback can mutate the result
@@ -193,23 +199,22 @@ public struct CatalogXMLSchemaResourceResolver: XMLSchemaResourceResolver {
         var system: [String: URL] = [:]
         var uri: [String: URL] = [:]
 
-        // Parse using Foundation.XMLDocument — this is a build-time or init-time
-        // operation so synchronous Foundation parsing is acceptable here.
+        // Parse using SwiftXMLCoder (libxml2-backed, Linux-compatible) — this is
+        // a build-time or init-time operation so synchronous parsing is fine.
         do {
-            let doc = try Foundation.XMLDocument(data: data)
-            let root = doc.rootElement()
-            let children = root?.children?.compactMap { $0 as? Foundation.XMLElement } ?? []
+            let doc = try SwiftXMLCoder.XMLDocument(data: data)
+            let children = doc.rootElement()?.children() ?? []
             for element in children {
-                switch element.localName {
+                switch element.name {
                 case "system":
-                    if let systemId = element.attribute(forName: "systemId")?.stringValue,
-                       let uriStr = element.attribute(forName: "uri")?.stringValue {
+                    if let systemId = element.attribute(named: "systemId"),
+                       let uriStr = element.attribute(named: "uri") {
                         system[systemId] = URL(fileURLWithPath: uriStr, relativeTo: baseDirectory)
                             .standardizedFileURL
                     }
                 case "uri":
-                    if let name = element.attribute(forName: "name")?.stringValue,
-                       let uriStr = element.attribute(forName: "uri")?.stringValue {
+                    if let name = element.attribute(named: "name"),
+                       let uriStr = element.attribute(named: "uri") {
                         uri[name] = URL(fileURLWithPath: uriStr, relativeTo: baseDirectory)
                             .standardizedFileURL
                     }
