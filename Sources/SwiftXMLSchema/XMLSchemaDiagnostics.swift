@@ -3,19 +3,15 @@ import Foundation
 // MARK: - XMLSchemaSourceLocation
 
 /// The location of a schema construct within a source file.
-///
-/// Line-number tracking requires the tree-based parser path (``XMLTreeMetadata``).
-/// When using the default ``XMLNode``-based parser, ``lineNumber`` is always `nil`.
 public struct XMLSchemaSourceLocation: Sendable, Equatable, Hashable {
     /// The URL of the XSD file in which the construct was found.
     public let fileURL: URL?
 
     /// The 1-based line number of the construct in the source file, if available.
     ///
-    /// This value is `nil` when parsing via the ``XMLNode``-based path because
-    /// `libxml2` line numbers are only accessible on the immutable ``XMLTreeDocument``
-    /// after the full parse completes. Future work will expose this via the
-    /// tree-based parser.
+    /// Populated for structural parse errors (missing required attributes, malformed
+    /// QNames) where the offending XML node is available. Resolution errors emitted
+    /// after the full parse (e.g., unresolved type references) carry only `fileURL`.
     public let lineNumber: Int?
 
     public init(fileURL: URL? = nil, lineNumber: Int? = nil) {
