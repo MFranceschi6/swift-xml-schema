@@ -31,9 +31,9 @@ extension XMLSchemaParsingError: CustomStringConvertible {
         location: XMLSchemaSourceLocation?
     ) -> String {
         var result = prefix
-        if let name { result += "(\(name))" }
+        if let name = name { result += "(\(name))" }
         result += ": \(message ?? "<nil>")"
-        if let location { result += " [\(location)]" }
+        if let location = location { result += " [\(location)]" }
         return result
     }
 }
