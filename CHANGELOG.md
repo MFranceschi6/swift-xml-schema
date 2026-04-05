@@ -6,6 +6,19 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 ## [Unreleased]
 
+### Added — Phase 0.3 (Component Model, Visitor, Traversal API)
+
+- **Indexed component model**: all seven lookup methods on `XMLNormalizedSchemaSet` (`element`, `complexType`, `simpleType`, `attribute`, `attributeGroup`, `modelGroup`, `rootElementBinding`) are now O(1) dictionary lookups backed by indices pre-computed in `init`. Previously O(n × m) linear scans.
+- Added `baseComplexType(of:)` — returns the direct parent `XMLNormalizedComplexType` in the derivation chain, or `nil` for root/built-in types.
+- Added `baseSimpleType(of:)` — returns the direct parent `XMLNormalizedSimpleType`, or `nil` for types derived from XSD built-ins.
+- Added `derivedComplexTypes(of:)` — returns all complex types that directly extend or restrict the given type (O(1) via pre-computed index).
+- Added `derivedSimpleTypes(of:)` — returns all simple types that directly derive from the given type.
+- Added `canSubstitute(_:for:)` — returns `true` if the first element is a direct member of the second element's substitution group.
+- Added `XMLSchemaVisitor<Result>` protocol (Swift 5.7+) with a primary associated type `Result` and `mutating` visit methods for all component kinds: schema, element, complexType, simpleType, attribute, attributeGroup, modelGroup, elementUse, choiceGroup, attributeUse. Default no-op implementations are provided when `Result == Void`.
+- Added `XMLSchemaWalker` struct (Swift 5.7+) that drives depth-first traversal of an `XMLNormalizedSchemaSet`: visits all top-level components in declaration order, recurses into `effectiveContent` and `choice` groups of complex types, and visits `effectiveAttributes` on each complex type. Accepts the visitor via `inout` so value-type conformers can accumulate state.
+- `Package@swift-5.6.swift`: excludes `XMLSchemaVisitor.swift`, `XMLSchemaWalker.swift`, and `XMLSchemaVisitorWalkerTests.swift` (Swift 5.7+ primary associated types and opaque parameter types are not available in the 5.6 toolchain lane).
+- Added `XMLSchemaComponentModelTests` (25 cases) and `XMLSchemaVisitorWalkerTests` (12 cases); total test count now 91.
+
 ### Added
 
 - Added `XMLSchemaSourceLocation` struct (`fileURL: URL?`, `lineNumber: Int?`) to surface where in a schema file a parse error originated. Line numbers require the tree-based parser path; the `XMLNode`-based path populates `fileURL` only.
