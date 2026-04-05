@@ -1313,3 +1313,144 @@ private struct SchemaReferenceResolver {
         return nil
     }
 }
+
+// MARK: - Async parsing (Swift 5.5+)
+
+#if swift(>=5.5)
+extension XMLSchemaDocumentParser {
+    /// Async variant of `parseDocument`. Calls `appendSchemaRecursivelyAsync`
+    /// which parallelises schema I/O at each import level with a `TaskGroup`.
+    func parseDocumentAsync(data: Data, sourceURL: URL?) async throws -> XMLSchemaSet {
+        let document: XMLCoderDocument
+        do {
+            if let sourceURL = sourceURL {
+                document = try XMLCoderDocument(data: data, sourceURL: sourceURL)
+            } else {
+                document = try XMLCoderDocument(data: data)
+            }
+        } catch {
+            throw XMLSchemaParsingError.invalidDocument(
+                message: "Unable to parse XML document.",
+                sourceLocation: XMLSchemaSourceLocation(fileURL: sourceURL)
+            )
+        }
+
+        let schemaNodes = try findSchemaNodes(in: document)
+        if schemaNodes.isEmpty {
+            throw XMLSchemaParsingError.invalidDocument(
+                message: "Missing xsd:schema root node.",
+                sourceLocation: XMLSchemaSourceLocation(fileURL: sourceURL)
+            )
+        }
+
+        var collectedSchemas: [XMLSchema] = []
+        var loadedSchemaURLs = Set<String>()
+
+        if let sourceURL = sourceURL, sourceURL.isFileURL {
+            loadedSchemaURLs.insert(sourceURL.standardizedFileURL.path)
+        }
+
+        let fallbackNamespaceMappings = document.rootElement()?.namespaceDeclarationsInScope() ?? [:]
+        for schemaNode in schemaNodes {
+            try await appendSchemaRecursivelyAsync(
+                schemaNode: schemaNode,
+                sourceURL: sourceURL,
+                fallbackNamespaceMappings: fallbackNamespaceMappings,
+                loadedSchemaURLs: &loadedSchemaURLs,
+                schemas: &collectedSchemas
+            )
+        }
+
+        let schemaSet = XMLSchemaSet(schemas: collectedSchemas)
+        try validateSchemaConsistency(schemaSet)
+        return schemaSet
+    }
+
+    /// Async variant of `appendSchemaRecursively`.
+    ///
+    /// URL resolution and cycle detection remain sequential to preserve
+    /// `inout` correctness. Schema data is fetched concurrently via
+    /// `withThrowingTaskGroup`, then parsed and recursed sequentially.
+    private func appendSchemaRecursivelyAsync(
+        schemaNode: XMLCoderNode,
+        sourceURL: URL?,
+        fallbackNamespaceMappings: [String: String],
+        loadedSchemaURLs: inout Set<String>,
+        schemas: inout [XMLSchema]
+    ) async throws {
+        let namespaceMappings = mergedNamespaceMappings(
+            schemaNode.namespaceDeclarationsInScope(),
+            fallback: fallbackNamespaceMappings
+        )
+
+        let parsedSchema = try parseSchema(
+            schemaNode: schemaNode,
+            sourceURL: sourceURL,
+            namespaceMappings: namespaceMappings
+        )
+        schemas.append(parsedSchema)
+
+        let importReferences = parsedSchema.imports.compactMap { $0.schemaLocation }
+        let includeReferences = parsedSchema.includes.map { $0.schemaLocation }
+        let references = importReferences + includeReferences
+
+        // Resolve all import URLs sequentially: URL arithmetic is fast and
+        // mutation of loadedSchemaURLs must remain single-threaded.
+        var toFetch: [(schemaLocation: String, schemaURL: URL)] = []
+        for schemaLocation in references {
+            let schemaURL = try await resourceResolver.resolve(
+                schemaLocation: schemaLocation,
+                relativeTo: sourceURL
+            )
+            let key = schemaURL.standardizedFileURL.path
+            if !loadedSchemaURLs.contains(key) {
+                loadedSchemaURLs.insert(key)
+                toFetch.append((schemaLocation, schemaURL))
+            }
+        }
+
+        guard !toFetch.isEmpty else { return }
+
+        // Fetch schema data concurrently. Only Sendable values (self, schemaURL)
+        // are captured in the task closure — no inout parameters.
+        var fetchedData: [(URL, Data)] = []
+        fetchedData.reserveCapacity(toFetch.count)
+        try await withThrowingTaskGroup(of: (URL, Data).self) { group in
+            for (_, schemaURL) in toFetch {
+                group.addTask {
+                    let data = try await self.resourceResolver.loadSchemaData(from: schemaURL)
+                    return (schemaURL, data)
+                }
+            }
+            for try await result in group {
+                fetchedData.append(result)
+            }
+        }
+
+        // Parse and recurse sequentially to maintain inout correctness.
+        for (schemaURL, importedData) in fetchedData {
+            let importedDocument: XMLCoderDocument
+            do {
+                importedDocument = try XMLCoderDocument(data: importedData, sourceURL: schemaURL)
+            } catch {
+                throw XMLSchemaParsingError.invalidSchema(
+                    name: nil,
+                    message: "Unable to parse imported schema at '\(schemaURL.absoluteString)'.",
+                    sourceLocation: XMLSchemaSourceLocation(fileURL: sourceURL)
+                )
+            }
+
+            let importedSchemaNodes = try findSchemaNodes(in: importedDocument)
+            for importedSchemaNode in importedSchemaNodes {
+                try await appendSchemaRecursivelyAsync(
+                    schemaNode: importedSchemaNode,
+                    sourceURL: schemaURL,
+                    fallbackNamespaceMappings: namespaceMappings,
+                    loadedSchemaURLs: &loadedSchemaURLs,
+                    schemas: &schemas
+                )
+            }
+        }
+    }
+}
+#endif

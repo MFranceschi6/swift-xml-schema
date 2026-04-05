@@ -262,4 +262,65 @@ final class XMLSchemaDocumentParserTests: XCTestCase {
         XCTAssertEqual(sharedDefinition.defaultValue, "en")
         XCTAssertEqual(sharedDefinition.annotation?.documentation, ["Shared docs"])
     }
+
+    // MARK: - Async parse (Swift 5.5+)
+
+    #if swift(>=5.5)
+    func test_asyncParseURL_simpleSchema_parsesSuccessfully() async throws {
+        let xsd = """
+        <?xml version="1.0" encoding="UTF-8"?>
+        <xs:schema xmlns:xs="http://www.w3.org/2001/XMLSchema" targetNamespace="urn:async-test">
+            <xs:element name="Root" type="xs:string"/>
+        </xs:schema>
+        """
+        let url = URL(fileURLWithPath: NSTemporaryDirectory())
+            .appendingPathComponent("async_simple_\(UUID().uuidString).xsd")
+        try xsd.write(to: url, atomically: true, encoding: .utf8)
+        defer { try? FileManager.default.removeItem(at: url) }
+
+        let parser = XMLSchemaDocumentParser()
+        let schemaSet = try await parser.parse(url: url)
+
+        XCTAssertEqual(schemaSet.schemas.count, 1)
+        XCTAssertEqual(schemaSet.schemas.first?.targetNamespace, "urn:async-test")
+        XCTAssertEqual(schemaSet.schemas.first?.elements.first?.name, "Root")
+    }
+
+    func test_asyncParseURL_withImport_loadsConcurrently() async throws {
+        let tmpDir = URL(fileURLWithPath: NSTemporaryDirectory())
+            .appendingPathComponent("async_import_\(UUID().uuidString)", isDirectory: true)
+        try FileManager.default.createDirectory(at: tmpDir, withIntermediateDirectories: true)
+        defer { try? FileManager.default.removeItem(at: tmpDir) }
+
+        let typesXSD = """
+        <?xml version="1.0" encoding="UTF-8"?>
+        <xs:schema xmlns:xs="http://www.w3.org/2001/XMLSchema" targetNamespace="urn:types">
+            <xs:complexType name="ItemType">
+                <xs:sequence>
+                    <xs:element name="name" type="xs:string"/>
+                </xs:sequence>
+            </xs:complexType>
+        </xs:schema>
+        """
+        try typesXSD.write(to: tmpDir.appendingPathComponent("types.xsd"), atomically: true, encoding: .utf8)
+
+        let mainXSD = """
+        <?xml version="1.0" encoding="UTF-8"?>
+        <xs:schema xmlns:xs="http://www.w3.org/2001/XMLSchema" targetNamespace="urn:main">
+            <xs:import namespace="urn:types" schemaLocation="types.xsd"/>
+            <xs:element name="Root" type="xs:string"/>
+        </xs:schema>
+        """
+        let mainURL = tmpDir.appendingPathComponent("main.xsd")
+        try mainXSD.write(to: mainURL, atomically: true, encoding: .utf8)
+
+        let parser = XMLSchemaDocumentParser()
+        let schemaSet = try await parser.parse(url: mainURL)
+
+        XCTAssertEqual(schemaSet.schemas.count, 2)
+        let namespaces = schemaSet.schemas.compactMap { $0.targetNamespace }
+        XCTAssertTrue(namespaces.contains("urn:main"))
+        XCTAssertTrue(namespaces.contains("urn:types"))
+    }
+    #endif
 }

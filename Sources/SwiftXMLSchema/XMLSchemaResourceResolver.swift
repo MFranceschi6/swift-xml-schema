@@ -27,7 +27,45 @@ public protocol XMLSchemaResourceResolver: Sendable {
 
     /// Loads the raw XSD bytes from `url`.
     func loadSchemaData(from url: URL) throws -> Data
+
+    #if swift(>=5.5)
+    /// Async variant of ``resolve(schemaLocation:relativeTo:)``.
+    ///
+    /// The default implementation bridges to the synchronous overload.
+    func resolve(schemaLocation: String, relativeTo sourceURL: URL?) async throws -> URL
+
+    /// Async variant of ``loadSchemaData(from:)``.
+    ///
+    /// The default implementation bridges to the synchronous overload.
+    /// ``RemoteXMLSchemaResourceResolver`` overrides this with a native
+    /// `URLSession` async implementation that does not block threads.
+    func loadSchemaData(from url: URL) async throws -> Data
+    #endif
 }
+
+#if swift(>=5.5)
+extension XMLSchemaResourceResolver {
+    // Private sync helpers so the async defaults below call the sync overloads,
+    // not the async ones (which would recurse infinitely).
+    private func _resolveSync(schemaLocation: String, relativeTo sourceURL: URL?) throws -> URL {
+        try resolve(schemaLocation: schemaLocation, relativeTo: sourceURL)
+    }
+
+    private func _loadDataSync(from url: URL) throws -> Data {
+        try loadSchemaData(from: url)
+    }
+
+    /// Default implementation: bridges to the synchronous overload.
+    public func resolve(schemaLocation: String, relativeTo sourceURL: URL?) async throws -> URL {
+        try _resolveSync(schemaLocation: schemaLocation, relativeTo: sourceURL)
+    }
+
+    /// Default implementation: bridges to the synchronous overload.
+    public func loadSchemaData(from url: URL) async throws -> Data {
+        try _loadDataSync(from: url)
+    }
+}
+#endif
 
 // MARK: - LocalFileXMLSchemaResourceResolver
 
@@ -87,8 +125,9 @@ public struct LocalFileXMLSchemaResourceResolver: XMLSchemaResourceResolver {
 
 /// Resolves and loads schemas from remote `http://` and `https://` URLs.
 ///
-/// Network I/O is performed synchronously using a ``DispatchSemaphore``-based
-/// wrapper around `URLSession`. Async variants will be available in Phase 0.5.
+/// The synchronous ``loadSchemaData(from:)`` implementation blocks the calling
+/// thread using a `DispatchSemaphore`. In async contexts, the async overload
+/// uses `withCheckedThrowingContinuation` to avoid blocking cooperative threads.
 ///
 /// This resolver rejects `file://` and relative locations. Combine it with
 /// ``LocalFileXMLSchemaResourceResolver`` and ``CatalogXMLSchemaResourceResolver``
@@ -161,6 +200,35 @@ public struct RemoteXMLSchemaResourceResolver: XMLSchemaResourceResolver {
 
         return try box.value.get()
     }
+
+    #if swift(>=5.5)
+    /// Async implementation: wraps `URLSession.dataTask` in a
+    /// `withCheckedThrowingContinuation` to avoid blocking cooperative threads.
+    public func loadSchemaData(from url: URL) async throws -> Data {
+        guard let scheme = url.scheme, scheme == "http" || scheme == "https" else {
+            throw XMLSchemaParsingError.resourceResolutionFailed(
+                schemaLocation: url.absoluteString,
+                message: "RemoteXMLSchemaResourceResolver only loads http:// and https:// URLs."
+            )
+        }
+
+        return try await withCheckedThrowingContinuation { continuation in
+            var request = URLRequest(url: url)
+            request.timeoutInterval = timeout
+            request.httpMethod = "GET"
+            URLSession.shared.dataTask(with: request) { data, _, error in
+                if let data = data {
+                    continuation.resume(returning: data)
+                } else {
+                    continuation.resume(throwing: XMLSchemaParsingError.resourceResolutionFailed(
+                        schemaLocation: url.absoluteString,
+                        message: error?.localizedDescription ?? "Unknown network error."
+                    ))
+                }
+            }.resume()
+        }
+    }
+    #endif
 }
 
 // MARK: - CatalogXMLSchemaResourceResolver

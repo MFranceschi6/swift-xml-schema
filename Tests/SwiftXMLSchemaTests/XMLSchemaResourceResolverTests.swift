@@ -250,4 +250,90 @@ final class XMLSchemaResourceResolverTests: XCTestCase {
         let loaded = try composite.loadSchemaData(from: url)
         XCTAssertEqual(loaded, content)
     }
+
+    func testCompositeLoadDataThrowsWhenAllFail() {
+        // RemoteXMLSchemaResourceResolver rejects file:// URLs on loadSchemaData;
+        // composite propagates the last error.
+        let composite = CompositeXMLSchemaResourceResolver([RemoteXMLSchemaResourceResolver()])
+        let url = URL(fileURLWithPath: "/tmp/a.xsd")
+        XCTAssertThrowsError(try composite.loadSchemaData(from: url)) { error in
+            XCTAssertNotNil(error as? XMLSchemaParsingError)
+        }
+    }
+
+    // MARK: - CatalogXMLSchemaResourceResolver — loadSchemaData
+
+    func testCatalogLoadSchemaDataSucceeds() throws {
+        let tmpDir = URL(fileURLWithPath: NSTemporaryDirectory())
+            .appendingPathComponent("catalog_load_\(UUID().uuidString)", isDirectory: true)
+        try FileManager.default.createDirectory(at: tmpDir, withIntermediateDirectories: true)
+        defer { try? FileManager.default.removeItem(at: tmpDir) }
+
+        let schemaContent = Data("<xs:schema/>".utf8)
+        let schemaURL = tmpDir.appendingPathComponent("types.xsd")
+        try schemaContent.write(to: schemaURL)
+
+        let catalogContent = """
+        <?xml version="1.0" encoding="UTF-8"?>
+        <catalog xmlns="urn:oasis:names:tc:entity:xmlns:xml:catalog">
+          <system systemId="urn:types" uri="types.xsd"/>
+        </catalog>
+        """
+        let catalogURL = tmpDir.appendingPathComponent("catalog.xml")
+        try catalogContent.write(to: catalogURL, atomically: true, encoding: .utf8)
+
+        let resolver = try CatalogXMLSchemaResourceResolver(catalogURL: catalogURL)
+        let resolved = try resolver.resolve(schemaLocation: "urn:types", relativeTo: nil)
+        let loaded = try resolver.loadSchemaData(from: resolved)
+        XCTAssertEqual(loaded, schemaContent)
+    }
+
+    func testCatalogResolverThrowsForInvalidXMLContent() throws {
+        let url = URL(fileURLWithPath: NSTemporaryDirectory())
+            .appendingPathComponent("bad_catalog_\(UUID().uuidString).xml")
+        try "<<< not xml >>>".write(to: url, atomically: true, encoding: .utf8)
+        defer { try? FileManager.default.removeItem(at: url) }
+
+        XCTAssertThrowsError(try CatalogXMLSchemaResourceResolver(catalogURL: url)) { error in
+            guard case .resourceResolutionFailed = error as? XMLSchemaParsingError else {
+                return XCTFail("Expected resourceResolutionFailed, got \(error)")
+            }
+        }
+    }
+
+    // MARK: - Async defaults (Swift 5.5+)
+
+    #if swift(>=5.5)
+    func testLocalResolverAsyncResolveBridgesToSync() async throws {
+        let resolver = LocalFileXMLSchemaResourceResolver()
+        let sourceURL = URL(fileURLWithPath: "/tmp/schemas/main.xsd")
+        let resolved = try await resolver.resolve(schemaLocation: "types.xsd", relativeTo: sourceURL)
+        XCTAssertEqual(resolved.lastPathComponent, "types.xsd")
+    }
+
+    func testLocalResolverAsyncLoadDataBridgesToSync() async throws {
+        let resolver = LocalFileXMLSchemaResourceResolver()
+        let url = URL(fileURLWithPath: NSTemporaryDirectory())
+            .appendingPathComponent("async_load_\(UUID().uuidString).xsd")
+        let content = Data("<xs:schema/>".utf8)
+        try content.write(to: url)
+        defer { try? FileManager.default.removeItem(at: url) }
+
+        let loaded = try await resolver.loadSchemaData(from: url)
+        XCTAssertEqual(loaded, content)
+    }
+
+    func testRemoteResolverAsyncLoadDataRejectsFileURL() async throws {
+        let resolver = RemoteXMLSchemaResourceResolver()
+        let url = URL(fileURLWithPath: "/tmp/a.xsd")
+        do {
+            _ = try await resolver.loadSchemaData(from: url)
+            XCTFail("Expected error")
+        } catch let error as XMLSchemaParsingError {
+            guard case .resourceResolutionFailed = error else {
+                return XCTFail("Expected resourceResolutionFailed, got \(error)")
+            }
+        }
+    }
+    #endif
 }
