@@ -56,9 +56,9 @@ final class XMLSchemaDocumentParserTests: XCTestCase {
         """
 
         let schema = try XCTUnwrap(XMLSchemaDocumentParser().parse(data: Data(xsd.utf8)).schemas.first)
-        XCTAssertEqual(schema.complexTypes[0].simpleContentBaseQName?.rawValue, "xsd:decimal")
+        XCTAssertEqual(schema.complexTypes[0].simpleContentBaseQName?.qualifiedName, "xsd:decimal")
         XCTAssertEqual(schema.complexTypes[0].attributes.map(\.name), ["currency"])
-        XCTAssertEqual(schema.complexTypes[1].simpleContentBaseQName?.rawValue, "tns:Amount")
+        XCTAssertEqual(schema.complexTypes[1].simpleContentBaseQName?.qualifiedName, "tns:Amount")
         XCTAssertEqual(schema.complexTypes[1].attributes.map(\.name), ["label"])
     }
 
@@ -77,7 +77,7 @@ final class XMLSchemaDocumentParserTests: XCTestCase {
         let schema = try XCTUnwrap(XMLSchemaDocumentParser().parse(data: Data(xsd.utf8)).schemas.first)
         XCTAssertEqual(schema.attributeGroups.first?.name, "BaseMetadata")
         XCTAssertEqual(schema.attributeGroups.first?.attributes.first?.name, "source")
-        XCTAssertEqual(schema.complexTypes.first?.attributeGroupRefs.first?.rawValue, "tns:BaseMetadata")
+        XCTAssertEqual(schema.complexTypes.first?.attributeGroupRefs.first?.qualifiedName, "tns:BaseMetadata")
     }
 
     func test_parseRecursiveIncludesAndImports_loadsReferencedSchemas() throws {
@@ -251,7 +251,7 @@ final class XMLSchemaDocumentParserTests: XCTestCase {
 
         XCTAssertTrue(animal.isAbstract)
         XCTAssertEqual(animal.annotation?.documentation, ["Animal docs"])
-        XCTAssertEqual(dog.substitutionGroup?.rawValue, "tns:animal")
+        XCTAssertEqual(dog.substitutionGroup?.qualifiedName, "tns:animal")
         XCTAssertEqual(dog.fixedValue, "DOG")
         XCTAssertEqual(dog.annotation?.documentation, ["Dog docs"])
 

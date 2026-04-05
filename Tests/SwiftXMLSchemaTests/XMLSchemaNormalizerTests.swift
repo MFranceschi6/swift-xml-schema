@@ -236,20 +236,20 @@ final class XMLSchemaNormalizerTests: XCTestCase {
             "en"
         )
 
-        XCTAssertEqual(restrictedAmount.effectiveSimpleContentValueTypeQName?.rawValue, "xsd:decimal")
+        XCTAssertEqual(restrictedAmount.effectiveSimpleContentValueTypeQName?.qualifiedName, "xsd:decimal")
         XCTAssertEqual(Set(restrictedAmount.effectiveAttributes.map(\.name)), Set(["currency", "scale"]))
-        XCTAssertEqual(directCode.effectiveSimpleContentValueTypeQName?.rawValue, "xsd:string")
+        XCTAssertEqual(directCode.effectiveSimpleContentValueTypeQName?.qualifiedName, "xsd:string")
         XCTAssertEqual(directCode.effectiveAttributes.first?.defaultValue, "internal")
 
         XCTAssertTrue(animal.isAbstract)
         XCTAssertEqual(dog.annotation?.documentation, ["Dog docs"])
-        XCTAssertEqual(dog.substitutionGroup?.rawValue, "tns:animal")
+        XCTAssertEqual(dog.substitutionGroup?.qualifiedName, "tns:animal")
         XCTAssertEqual(normalized.substitutionGroupMembers(ofLocalName: "animal", namespaceURI: "urn:test").map(\.name), ["dog"])
 
         XCTAssertEqual(zooDog.name, "dog")
         XCTAssertEqual(zooDog.fixedValue, "DOG")
         XCTAssertEqual(zooDog.annotation?.documentation, ["Dog docs"])
-        XCTAssertEqual(zooDog.substitutionGroup?.rawValue, "tns:animal")
+        XCTAssertEqual(zooDog.substitutionGroup?.qualifiedName, "tns:animal")
         XCTAssertEqual(sharedAttribute.defaultValue, "en")
         XCTAssertEqual(sharedAttribute.annotation?.documentation, ["Shared docs"])
     }
