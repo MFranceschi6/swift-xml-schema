@@ -115,7 +115,7 @@ final class XMLSchemaBroadCoverageTests: XCTestCase {
         """
 
         XCTAssertThrowsError(try XMLSchemaDocumentParser().parse(data: Data(xsd.utf8))) { error in
-            guard case let XMLSchemaParsingError.invalidDocument(message) = error else {
+            guard case let XMLSchemaParsingError.invalidDocument(message, _) = error else {
                 return XCTFail("Unexpected error: \(error)")
             }
             XCTAssertTrue(message?.contains("Unknown namespace prefix") == true)

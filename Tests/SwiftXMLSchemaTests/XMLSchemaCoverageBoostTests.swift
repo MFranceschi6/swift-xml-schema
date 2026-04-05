@@ -370,10 +370,10 @@ final class XMLSchemaCoverageBoostTests: XCTestCase {
         )
         XCTAssertEqual(
             XMLSchemaParsingError.unresolvedReference(name: nil, message: "missing").description,
-            "unresolvedReference(<nil>): missing"
+            "unresolvedReference: missing"
         )
         XCTAssertEqual(
-            XMLSchemaParsingError.resourceResolutionFailed(location: "file.xsd", message: "bad").description,
+            XMLSchemaParsingError.resourceResolutionFailed(schemaLocation: "file.xsd", message: "bad").description,
             "resourceResolutionFailed(file.xsd): bad"
         )
         XCTAssertEqual(

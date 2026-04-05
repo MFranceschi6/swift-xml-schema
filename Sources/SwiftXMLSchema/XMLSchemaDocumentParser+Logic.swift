@@ -15,12 +15,18 @@ extension XMLSchemaDocumentParser {
                 document = try XMLCoderDocument(data: data)
             }
         } catch {
-            throw XMLSchemaParsingError.invalidDocument(message: "Unable to parse XML document.")
+            throw XMLSchemaParsingError.invalidDocument(
+                message: "Unable to parse XML document.",
+                sourceLocation: XMLSchemaSourceLocation(fileURL: sourceURL)
+            )
         }
 
         let schemaNodes = try findSchemaNodes(in: document)
         if schemaNodes.isEmpty {
-            throw XMLSchemaParsingError.invalidDocument(message: "Missing xsd:schema root node.")
+            throw XMLSchemaParsingError.invalidDocument(
+                message: "Missing xsd:schema root node.",
+                sourceLocation: XMLSchemaSourceLocation(fileURL: sourceURL)
+            )
         }
 
         var collectedSchemas: [XMLSchema] = []
@@ -79,7 +85,8 @@ extension XMLSchemaDocumentParser {
             } catch {
                 throw XMLSchemaParsingError.invalidSchema(
                     name: nil,
-                    message: "Unable to parse imported schema '\(schemaLocation)'."
+                    message: "Unable to parse imported schema '\(schemaLocation)'.",
+                    sourceLocation: XMLSchemaSourceLocation(fileURL: sourceURL)
                 )
             }
 
