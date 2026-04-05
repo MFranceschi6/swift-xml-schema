@@ -22,3 +22,4 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 - Reframed the package boundary around standalone XSD parsing and schema-set assembly only.
 - Kept XML instance validation, SOAP, and WSDL concerns out of the bootstrap scope.
 - Preserved `XMLSchemaDocumentParser -> XMLSchemaSet` as the raw parsing layer while moving codegen-oriented semantic expansion into the dedicated normalizer layer.
+- Configured the public GitHub repository with lean repository settings, curated issue labels, and `main` branch protection wired to CI, SwiftLint, and documentation checks.
