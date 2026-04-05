@@ -11,7 +11,8 @@ let package = Package(
         .library(name: "SwiftXMLSchema", targets: ["SwiftXMLSchema"])
     ],
     dependencies: [
-        .package(url: "https://github.com/MFranceschi6/swift-xml-coder.git", from: "2.0.0")
+        .package(url: "https://github.com/MFranceschi6/swift-xml-coder.git", from: "2.0.0"),
+        .package(url: "https://github.com/apple/swift-docc-plugin", from: "1.0.0")
     ],
     targets: [
         .target(

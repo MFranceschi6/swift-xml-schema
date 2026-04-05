@@ -568,7 +568,7 @@ public struct XMLSchemaNormalizer: Sendable {
         let augmentedSchemaSet = try augmentor.augment(schemaSet)
         let resolver = RawNormalizationResolver(schemaSet: augmentedSchemaSet)
 
-        let normalizedSchemas = try augmentedSchemaSet.schemas.map { schema in
+        let normalizedSchemas: [XMLNormalizedSchema] = try augmentedSchemaSet.schemas.map { schema in
             let normalizedElements = schema.elements.enumerated().map { index, element in
                 normalizeElementDeclaration(
                     element,
@@ -776,7 +776,7 @@ private extension XMLSchemaNormalizer {
                 var synthesizedComplexTypes: [XMLSchemaComplexType] = []
                 var synthesizedSimpleTypes: [XMLSchemaSimpleType] = []
 
-                let rewrittenElements = try schema.elements.enumerated().map { index, element in
+                let rewrittenElements: [XMLSchemaElement] = try schema.elements.enumerated().map { index, element in
                     let result = try rewriteElement(
                         element,
                         namespaceURI: schema.targetNamespace,
@@ -787,7 +787,7 @@ private extension XMLSchemaNormalizer {
                     return result.element
                 }
 
-                let rewrittenAttributeDefinitions = try schema.attributeDefinitions.enumerated().map { index, attribute in
+                let rewrittenAttributeDefinitions: [XMLSchemaAttribute] = try schema.attributeDefinitions.enumerated().map { index, attribute in
                     let result = try rewriteAttribute(
                         attribute,
                         namespaceURI: schema.targetNamespace,
@@ -859,7 +859,7 @@ private extension XMLSchemaNormalizer {
                 synthesizedComplexTypes: &synthesizedComplexTypes,
                 synthesizedSimpleTypes: &synthesizedSimpleTypes
             )
-            let rewrittenAttributes = try complexType.attributes.enumerated().map { index, attribute in
+            let rewrittenAttributes: [XMLSchemaAttribute] = try complexType.attributes.enumerated().map { index, attribute in
                 let result = try rewriteAttribute(
                     attribute,
                     namespaceURI: namespaceURI,
@@ -1089,7 +1089,7 @@ private extension XMLSchemaNormalizer {
                 synthesizedComplexTypes: &synthesizedComplexTypes,
                 synthesizedSimpleTypes: &synthesizedSimpleTypes
             )
-            let rewrittenAttributes = try complexType.attributes.enumerated().map { index, attribute in
+            let rewrittenAttributes: [XMLSchemaAttribute] = try complexType.attributes.enumerated().map { index, attribute in
                 let result = try rewriteAttribute(
                     attribute,
                     namespaceURI: namespaceURI,
