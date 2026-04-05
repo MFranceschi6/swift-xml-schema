@@ -135,7 +135,7 @@ final class XMLSchemaDocumentParserTests: XCTestCase {
         """
 
         XCTAssertThrowsError(try XMLSchemaDocumentParser().parse(data: Data(xsd.utf8))) { error in
-            guard case let XMLSchemaParsingError.invalidSchema(name, message) = error else {
+            guard case let XMLSchemaParsingError.invalidSchema(name, message, _) = error else {
                 return XCTFail("Unexpected error: \(error)")
             }
             XCTAssertEqual(name, "Order")
@@ -151,7 +151,7 @@ final class XMLSchemaDocumentParserTests: XCTestCase {
         """
 
         XCTAssertThrowsError(try XMLSchemaDocumentParser().parse(data: Data(xsd.utf8))) { error in
-            guard case let XMLSchemaParsingError.unresolvedReference(name, message) = error else {
+            guard case let XMLSchemaParsingError.unresolvedReference(name, message, _) = error else {
                 return XCTFail("Unexpected error: \(error)")
             }
             XCTAssertEqual(name, "request")

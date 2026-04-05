@@ -14,28 +14,15 @@ SwiftXMLCoder v2 (fondazione — codec, streaming, macro, XPath)
     └─ SwiftSOAP (client/server SOAP, parser WSDL)
 ```
 
-**Stato attuale:** parsing raw completo (elements, types, groups, wildcards, choice/sequence/all, include/import, QName), normalizzazione semantica (espansione gruppi, tipi anonimi, ereditarietà per extension, cicli), 12 test. Build + test + lint OK, dipendenza su swift-xml-coder v2.0.0 remota.
+**Stato attuale (2026-04-05):** Phase 0.1 completata. Parsing raw completo + normalizzazione semantica inclusa restriction, default/fixed values, isAbstract, annotation/documentation, substitutionGroup con lookup table. CI verde su tutte le lane (5.4→6.1, iOS, TSan, SwiftLint, DocC). Dipendenza su swift-xml-coder v2.0.0 remota.
 
 **Posizionamento strategico:** Nessun linguaggio fuori da Java (Xerces/JAXB) e .NET (`System.Xml.Schema`) ha un component model XSD completo e navigabile. Go, Rust e JS/TS hanno solo tool parziali che gestiscono l'80% dei casi. Python (xmlschema) è completo per parsing/validazione ma non è un component model orientato al tooling. Swift ha l'opportunità di essere best-in-class per l'ecosistema Apple/server-side, colmando lo stesso gap che Rust non ha ancora riempito.
 
 ---
 
-## Phase 0.1 — Completezza XSD Core (Swift 5.4)
+## Phase 0.1 — Completezza XSD Core ✅ COMPLETATA (2026-04-05)
 
-**Obiettivo:** Colmare i gap critici nel modello che bloccano schemi reali (specialmente WSDL-derived). La **type hierarchy resolution completa** (extension + restriction) è ciò che separa le librerie serie dai toy project — Go e Rust falliscono esattamente qui.
-
-| Item | Dettaglio |
-|------|-----------|
-| **Complex type restriction** | Il normalizer lancia a `XMLSchemaNormalizer.swift:1154`. Implementare calcolo effective content/attributes per restriction (intersezione base content con restriction declared content, override prohibited/required attributes). Bloccante per schemi WSDL. Ispirarsi al modello Xerces: `XSComplexTypeDefinition.getContentType()` risolve sia extension che restriction. |
-| **Default/fixed values** | Aggiungere `defaultValue: String?` e `fixedValue: String?` a `XMLSchemaElement`, `XMLSchemaAttribute` e normalizzati. Il parser già legge gli attributi dei nodi ma scarta `default`/`fixed`. Python xmlschema e .NET risolvono i default; la maggior parte delle librerie Go/Rust no. |
-| **Abstract types/elements** | `isAbstract: Bool` su `XMLSchemaComplexType`, `XMLSchemaElement` e normalizzati. Codegen ne ha bisogno per emettere gerarchie protocol-based. |
-| **Annotation/documentation** | Struct `XMLSchemaAnnotation` con `documentation: [String]`, `appinfo: [String]`. Attaccare a schema, elements, types, attributes. Alimenta doc comments in codegen. |
-| **substitutionGroup** | `substitutionGroup: XMLSchemaQName?` su `XMLSchemaElement`. Lookup table su `XMLNormalizedSchemaSet` per decoder polimorfi. |
-
-**Sblocca downstream:** CodeGen gestisce restriction (critico per WSDL), emette doc comments, marca tipi abstract. SOAP può iniziare a dipendere.
-
-**File coinvolti:** `XMLSchema.swift`, `XMLSchemaDocumentParser+Logic.swift`, `XMLSchemaNormalizer.swift`
-**Target test:** 25+
+Tutti e 5 gli item erano già implementati nel bootstrap. Archiviato in `.claude/plans/archive/`.
 
 ---
 

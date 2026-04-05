@@ -129,7 +129,7 @@ final class XMLSchemaNormalizerTests: XCTestCase {
         let schemaSet = try XMLSchemaDocumentParser().parse(data: Data(xsd.utf8))
 
         XCTAssertThrowsError(try XMLSchemaNormalizer().normalize(schemaSet)) { error in
-            guard case let XMLSchemaParsingError.other(message) = error else {
+            guard case let XMLSchemaParsingError.other(message, _) = error else {
                 return XCTFail("Unexpected error: \(error)")
             }
             XCTAssertTrue(message?.contains("Cyclic group reference") == true)
