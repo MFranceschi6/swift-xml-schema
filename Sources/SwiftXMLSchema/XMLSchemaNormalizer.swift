@@ -673,7 +673,23 @@ public struct XMLNormalizedSchemaSet: Sendable, Equatable {
 public struct XMLSchemaNormalizer: Sendable {
     public init() {}
 
+    #if swift(>=6.0)
+    public func normalize(_ schemaSet: XMLSchemaSet) throws(XMLSchemaParsingError) -> XMLNormalizedSchemaSet {
+        do {
+            return try normalizeImpl(schemaSet)
+        } catch let error as XMLSchemaParsingError {
+            throw error
+        } catch {
+            preconditionFailure("Unexpected non-XMLSchemaParsingError: \(error)")
+        }
+    }
+    #else
     public func normalize(_ schemaSet: XMLSchemaSet) throws -> XMLNormalizedSchemaSet {
+        try normalizeImpl(schemaSet)
+    }
+    #endif
+
+    private func normalizeImpl(_ schemaSet: XMLSchemaSet) throws -> XMLNormalizedSchemaSet {
         var augmentor = InlineTypeAugmentor()
         let augmentedSchemaSet = try augmentor.augment(schemaSet)
         let resolver = RawNormalizationResolver(schemaSet: augmentedSchemaSet)
@@ -740,7 +756,7 @@ public struct XMLSchemaNormalizer: Sendable {
 
         return XMLNormalizedSchemaSet(schemas: normalizedSchemas)
     }
-}
+}  // end XMLSchemaNormalizer
 
 private extension XMLSchemaNormalizer {
     struct ResolvedElementMetadata {

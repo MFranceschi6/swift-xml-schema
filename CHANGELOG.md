@@ -6,6 +6,23 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 ## [Unreleased]
 
+### Added — Phase 0.5 (Concurrency + Typed Throws, Swift 6.0)
+
+- **Typed throws on public API** (Swift 6.0+): `XMLSchemaDocumentParser.parse(data:)`, `parse(data:sourceURL:)`, and `parse(url:)` now declare `throws(XMLSchemaParsingError)`, enabling exhaustive `catch` at call sites. `XMLSchemaNormalizer.normalize(_:)` is typed identically. A shared `bridged(_:)` helper bridges the untyped-throws internal implementation into the typed public surface. On Swift ≤5.9 the `#else` branch retains untyped `throws` with identical behaviour.
+- **Async resource resolver protocol** (Swift 5.5+): `XMLSchemaResourceResolver` gains two async protocol requirements — `resolve(schemaLocation:relativeTo:) async throws` and `loadSchemaData(from:) async throws` — with default implementations that bridge to the synchronous overloads. Existing conformances compile without changes.
+- **`RemoteXMLSchemaResourceResolver` async override**: the async `loadSchemaData(from:)` wraps `URLSession.dataTask` in `withCheckedThrowingContinuation`, avoiding the `DispatchSemaphore` thread-blocking in async contexts. Compatible with macOS 10.15+ / iOS 15+.
+- **`XMLSchemaDocumentParser.parse(url:) async throws`** (Swift 5.5+): async overload of the existing sync `parse(url:)`. Calls the async resolver and delegates to `parseDocumentAsync`.
+- **Concurrent multi-schema parsing** (`parseDocumentAsync` / `appendSchemaRecursivelyAsync`, Swift 5.5+): imported and included schemas are now loaded concurrently at each nesting level via `withThrowingTaskGroup`. URL resolution and cycle detection remain sequential (preserving `inout` correctness); only the I/O phase is parallelised. First task error cancels remaining tasks and rethrows.
+- **Sendable audit**: all public types already carry explicit `Sendable` conformances. `@unchecked Sendable` is confined to `_ResultBox` (the semaphore-synchronized result box in `RemoteXMLSchemaResourceResolver`).
+
+### Added — Phase 0.4 (lineNumber in XMLSchemaSourceLocation)
+
+- `XMLSchemaSourceLocation.lineNumber` is now populated for structural parse errors (missing required attributes, malformed QNames) where the offending `XMLNode` is available. Requires `swift-xml-coder` ≥ 2.1.0 which exposes `XMLNode.lineNumber` via `xmlGetLineNo`.
+- All 13 internal parse functions in `XMLSchemaDocumentParser+Logic.swift` now thread `sourceURL: URL?` through their signatures so throw sites can construct a complete `XMLSchemaSourceLocation`.
+- Updated `XMLSchemaSourceLocation` doc comment to distinguish structural parse errors (line number populated) from post-parse resolution errors (file URL only).
+- Replaced hand-rolled `XMLSchemaQName` with `XMLQualifiedName` from `SwiftXMLCoder`. `.rawValue` renamed to `.qualifiedName` everywhere; construction updated to `XMLQualifiedName(localName:namespaceURI:prefix:)`.
+- Bumped `swift-xml-coder` lower bound to `2.1.0` across all five Package manifests.
+
 ### Added — Phase 0.3 (Component Model, Visitor, Traversal API)
 
 - **Indexed component model**: all seven lookup methods on `XMLNormalizedSchemaSet` (`element`, `complexType`, `simpleType`, `attribute`, `attributeGroup`, `modelGroup`, `rootElementBinding`) are now O(1) dictionary lookups backed by indices pre-computed in `init`. Previously O(n × m) linear scans.
