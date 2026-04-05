@@ -64,7 +64,7 @@ extension XMLSchemaDocumentParser {
             fallback: fallbackNamespaceMappings
         )
 
-        let parsedSchema = try parseSchema(schemaNode: schemaNode, namespaceMappings: namespaceMappings)
+        let parsedSchema = try parseSchema(schemaNode: schemaNode, sourceURL: sourceURL, namespaceMappings: namespaceMappings)
         schemas.append(parsedSchema)
 
         let importReferences = parsedSchema.imports.compactMap { $0.schemaLocation }
@@ -116,7 +116,7 @@ extension XMLSchemaDocumentParser {
         }
     }
 
-    private func parseSchema(schemaNode: XMLCoderNode, namespaceMappings: [String: String]) throws -> XMLSchema {
+    private func parseSchema(schemaNode: XMLCoderNode, sourceURL: URL?, namespaceMappings: [String: String]) throws -> XMLSchema {
         let annotation = parseAnnotation(from: schemaNode)
         let targetNamespace = normalized(schemaNode.attribute(named: "targetNamespace"))
 
@@ -140,29 +140,30 @@ extension XMLSchemaDocumentParser {
 
         let elements = try schemaNode.children()
             .filter { $0.name == "element" }
-            .map { try parseSchemaElement($0, namespaceMappings: namespaceMappings) }
+            .map { try parseSchemaElement($0, sourceURL: sourceURL, namespaceMappings: namespaceMappings) }
 
         let attributeDefinitions = try parseAttributes(
             from: schemaNode.children().filter { $0.name == "attribute" },
             contextName: "schema",
+            sourceURL: sourceURL,
             namespaceMappings: namespaceMappings
         )
 
         let attributeGroups = try schemaNode.children()
             .filter { $0.name == "attributeGroup" && normalized($0.attribute(named: "name")) != nil }
-            .map { try parseAttributeGroup($0, namespaceMappings: namespaceMappings) }
+            .map { try parseAttributeGroup($0, sourceURL: sourceURL, namespaceMappings: namespaceMappings) }
 
         let modelGroups = try schemaNode.children()
             .filter { $0.name == "group" && normalized($0.attribute(named: "name")) != nil }
-            .map { try parseModelGroup($0, namespaceMappings: namespaceMappings) }
+            .map { try parseModelGroup($0, sourceURL: sourceURL, namespaceMappings: namespaceMappings) }
 
         let complexTypes = try schemaNode.children()
             .filter { $0.name == "complexType" }
-            .map { try parseComplexType($0, namespaceMappings: namespaceMappings) }
+            .map { try parseComplexType($0, sourceURL: sourceURL, namespaceMappings: namespaceMappings) }
 
         let simpleTypes = try schemaNode.children()
             .filter { $0.name == "simpleType" }
-            .map { try parseSimpleType($0, namespaceMappings: namespaceMappings) }
+            .map { try parseSimpleType($0, sourceURL: sourceURL, namespaceMappings: namespaceMappings) }
 
         return XMLSchema(
             annotation: annotation,
@@ -178,7 +179,7 @@ extension XMLSchemaDocumentParser {
         )
     }
 
-    private func parseSchemaElement(_ elementNode: XMLCoderNode, namespaceMappings: [String: String]) throws -> XMLSchemaElement {
+    private func parseSchemaElement(_ elementNode: XMLCoderNode, sourceURL: URL?, namespaceMappings: [String: String]) throws -> XMLSchemaElement {
         let annotation = parseAnnotation(from: elementNode)
         let name = normalized(elementNode.attribute(named: "name"))
         let refQName = try resolveQName(
@@ -188,7 +189,11 @@ extension XMLSchemaDocumentParser {
         )
         let resolvedName = name ?? refQName?.localName
         guard let resolvedName = resolvedName else {
-            throw XMLSchemaParsingError.invalidSchema(name: nil, message: "Schema element is missing both 'name' and 'ref'.")
+            throw XMLSchemaParsingError.invalidSchema(
+                name: nil,
+                message: "Schema element is missing both 'name' and 'ref'.",
+                sourceLocation: XMLSchemaSourceLocation(fileURL: sourceURL, lineNumber: elementNode.lineNumber)
+            )
         }
 
         let typeQName = try resolveQName(
@@ -210,7 +215,7 @@ extension XMLSchemaDocumentParser {
         )
         let inlineComplexType = try elementNode.children()
             .first(where: { $0.name == "complexType" })
-            .map { try parseAnonymousComplexType($0, namespaceMappings: namespaceMappings) }
+            .map { try parseAnonymousComplexType($0, sourceURL: sourceURL, namespaceMappings: namespaceMappings) }
         let inlineSimpleType = try elementNode.children()
             .first(where: { $0.name == "simpleType" })
             .map { try parseAnonymousSimpleType($0, namespaceMappings: namespaceMappings) }
@@ -232,10 +237,14 @@ extension XMLSchemaDocumentParser {
         )
     }
 
-    private func parseComplexType(_ complexTypeNode: XMLCoderNode, namespaceMappings: [String: String]) throws -> XMLSchemaComplexType {
+    private func parseComplexType(_ complexTypeNode: XMLCoderNode, sourceURL: URL?, namespaceMappings: [String: String]) throws -> XMLSchemaComplexType {
         let annotation = parseAnnotation(from: complexTypeNode)
         guard let name = normalized(complexTypeNode.attribute(named: "name")) else {
-            throw XMLSchemaParsingError.invalidSchema(name: nil, message: "complexType node is missing required 'name'.")
+            throw XMLSchemaParsingError.invalidSchema(
+                name: nil,
+                message: "complexType node is missing required 'name'.",
+                sourceLocation: XMLSchemaSourceLocation(fileURL: sourceURL, lineNumber: complexTypeNode.lineNumber)
+            )
         }
 
         let complexTypeChildren = complexTypeNode.children()
@@ -258,6 +267,7 @@ extension XMLSchemaDocumentParser {
         )
         let content = try parseSchemaContent(
             from: complexTypeChildren + complexDerivedChildren,
+            sourceURL: sourceURL,
             namespaceMappings: namespaceMappings
         )
         let attributes = try parseAttributes(
@@ -265,6 +275,7 @@ extension XMLSchemaDocumentParser {
                 complexDerivedChildren.filter { $0.name == "attribute" } +
                 simpleDerivedChildren.filter { $0.name == "attribute" },
             contextName: name,
+            sourceURL: sourceURL,
             namespaceMappings: namespaceMappings
         )
         let attributeRefs = try parseAttributeRefs(
@@ -278,6 +289,7 @@ extension XMLSchemaDocumentParser {
                 complexDerivedChildren.filter { $0.name == "attributeGroup" } +
                 simpleDerivedChildren.filter { $0.name == "attributeGroup" },
             contextName: name,
+            sourceURL: sourceURL,
             namespaceMappings: namespaceMappings
         )
         let anyAttribute = try parseAnyAttribute(
@@ -304,7 +316,11 @@ extension XMLSchemaDocumentParser {
         )
     }
 
-    private func parseAnonymousComplexType(_ complexTypeNode: XMLCoderNode, namespaceMappings: [String: String]) throws -> XMLSchemaAnonymousComplexType {
+    private func parseAnonymousComplexType(
+        _ complexTypeNode: XMLCoderNode,
+        sourceURL: URL?,
+        namespaceMappings: [String: String]
+    ) throws -> XMLSchemaAnonymousComplexType {
         let annotation = parseAnnotation(from: complexTypeNode)
         let complexTypeChildren = complexTypeNode.children()
         let complexContentNode = complexTypeChildren.first(where: { $0.name == "complexContent" })
@@ -315,6 +331,7 @@ extension XMLSchemaDocumentParser {
         let simpleDerivedChildren = simpleDerivedNode?.children() ?? []
         let content = try parseSchemaContent(
             from: complexTypeChildren + complexDerivedChildren,
+            sourceURL: sourceURL,
             namespaceMappings: namespaceMappings
         )
         let attributes = try parseAttributes(
@@ -322,6 +339,7 @@ extension XMLSchemaDocumentParser {
                 complexDerivedChildren.filter { $0.name == "attribute" } +
                 simpleDerivedChildren.filter { $0.name == "attribute" },
             contextName: "anonymousComplexType",
+            sourceURL: sourceURL,
             namespaceMappings: namespaceMappings
         )
         let attributeRefs = try parseAttributeRefs(
@@ -335,6 +353,7 @@ extension XMLSchemaDocumentParser {
                 complexDerivedChildren.filter { $0.name == "attributeGroup" } +
                 simpleDerivedChildren.filter { $0.name == "attributeGroup" },
             contextName: "anonymousComplexType",
+            sourceURL: sourceURL,
             namespaceMappings: namespaceMappings
         )
         let anyAttribute = try parseAnyAttribute(
@@ -368,14 +387,23 @@ extension XMLSchemaDocumentParser {
         )
     }
 
-    private func parseAttributeGroup(_ attributeGroupNode: XMLCoderNode, namespaceMappings: [String: String]) throws -> XMLSchemaAttributeGroup {
+    private func parseAttributeGroup(
+        _ attributeGroupNode: XMLCoderNode,
+        sourceURL: URL?,
+        namespaceMappings: [String: String]
+    ) throws -> XMLSchemaAttributeGroup {
         guard let name = normalized(attributeGroupNode.attribute(named: "name")) else {
-            throw XMLSchemaParsingError.invalidSchema(name: nil, message: "attributeGroup node is missing required 'name'.")
+            throw XMLSchemaParsingError.invalidSchema(
+                name: nil,
+                message: "attributeGroup node is missing required 'name'.",
+                sourceLocation: XMLSchemaSourceLocation(fileURL: sourceURL, lineNumber: attributeGroupNode.lineNumber)
+            )
         }
 
         let attributes = try parseAttributes(
             from: attributeGroupNode.children().filter { $0.name == "attribute" },
             contextName: name,
+            sourceURL: sourceURL,
             namespaceMappings: namespaceMappings
         )
         let attributeRefs = try parseAttributeRefs(
@@ -385,6 +413,7 @@ extension XMLSchemaDocumentParser {
         let attributeGroupRefs = try parseAttributeGroupRefs(
             from: attributeGroupNode.children().filter { $0.name == "attributeGroup" },
             contextName: name,
+            sourceURL: sourceURL,
             namespaceMappings: namespaceMappings
         )
 
@@ -396,25 +425,29 @@ extension XMLSchemaDocumentParser {
         )
     }
 
-    private func parseModelGroup(_ modelGroupNode: XMLCoderNode, namespaceMappings: [String: String]) throws -> XMLSchemaModelGroup {
+    private func parseModelGroup(_ modelGroupNode: XMLCoderNode, sourceURL: URL?, namespaceMappings: [String: String]) throws -> XMLSchemaModelGroup {
         guard let name = normalized(modelGroupNode.attribute(named: "name")) else {
-            throw XMLSchemaParsingError.invalidSchema(name: nil, message: "group node is missing required 'name'.")
+            throw XMLSchemaParsingError.invalidSchema(
+                name: nil,
+                message: "group node is missing required 'name'.",
+                sourceLocation: XMLSchemaSourceLocation(fileURL: sourceURL, lineNumber: modelGroupNode.lineNumber)
+            )
         }
-        let content = try parseSchemaContent(from: modelGroupNode.children(), namespaceMappings: namespaceMappings)
+        let content = try parseSchemaContent(from: modelGroupNode.children(), sourceURL: sourceURL, namespaceMappings: namespaceMappings)
         return XMLSchemaModelGroup(name: name, content: content)
     }
 
-    private func parseSchemaContent(from nodes: [XMLCoderNode], namespaceMappings: [String: String]) throws -> [XMLSchemaContentNode] {
+    private func parseSchemaContent(from nodes: [XMLCoderNode], sourceURL: URL?, namespaceMappings: [String: String]) throws -> [XMLSchemaContentNode] {
         var content: [XMLSchemaContentNode] = []
         for node in nodes {
             switch node.name {
             case "sequence", "all":
-                content.append(contentsOf: try parseContainerContent(from: node, namespaceMappings: namespaceMappings))
+                content.append(contentsOf: try parseContainerContent(from: node, sourceURL: sourceURL, namespaceMappings: namespaceMappings))
             case "choice":
-                content.append(.choice(try parseChoiceGroup(node, namespaceMappings: namespaceMappings)))
+                content.append(.choice(try parseChoiceGroup(node, sourceURL: sourceURL, namespaceMappings: namespaceMappings)))
             case "group":
                 if normalized(node.attribute(named: "ref")) != nil {
-                    content.append(.groupReference(try parseGroupReference(node, namespaceMappings: namespaceMappings)))
+                    content.append(.groupReference(try parseGroupReference(node, sourceURL: sourceURL, namespaceMappings: namespaceMappings)))
                 }
             case "any":
                 content.append(.wildcard(try parseWildcard(node, kind: .element)))
@@ -425,22 +458,26 @@ extension XMLSchemaDocumentParser {
         return content
     }
 
-    private func parseContainerContent(from containerNode: XMLCoderNode, namespaceMappings: [String: String]) throws -> [XMLSchemaContentNode] {
+    private func parseContainerContent(
+        from containerNode: XMLCoderNode,
+        sourceURL: URL?,
+        namespaceMappings: [String: String]
+    ) throws -> [XMLSchemaContentNode] {
         var content: [XMLSchemaContentNode] = []
         for childNode in containerNode.children() {
             switch childNode.name {
             case "element":
-                content.append(.element(try parseSchemaElement(childNode, namespaceMappings: namespaceMappings)))
+                content.append(.element(try parseSchemaElement(childNode, sourceURL: sourceURL, namespaceMappings: namespaceMappings)))
             case "choice":
-                content.append(.choice(try parseChoiceGroup(childNode, namespaceMappings: namespaceMappings)))
+                content.append(.choice(try parseChoiceGroup(childNode, sourceURL: sourceURL, namespaceMappings: namespaceMappings)))
             case "group":
                 if normalized(childNode.attribute(named: "ref")) != nil {
-                    content.append(.groupReference(try parseGroupReference(childNode, namespaceMappings: namespaceMappings)))
+                    content.append(.groupReference(try parseGroupReference(childNode, sourceURL: sourceURL, namespaceMappings: namespaceMappings)))
                 }
             case "any":
                 content.append(.wildcard(try parseWildcard(childNode, kind: .element)))
             case "sequence", "all":
-                content.append(contentsOf: try parseContainerContent(from: childNode, namespaceMappings: namespaceMappings))
+                content.append(contentsOf: try parseContainerContent(from: childNode, sourceURL: sourceURL, namespaceMappings: namespaceMappings))
             default:
                 continue
             }
@@ -448,22 +485,26 @@ extension XMLSchemaDocumentParser {
         return content
     }
 
-    private func parseChoiceGroup(_ choiceNode: XMLCoderNode, namespaceMappings: [String: String]) throws -> XMLSchemaChoiceGroup {
+    private func parseChoiceGroup(_ choiceNode: XMLCoderNode, sourceURL: URL?, namespaceMappings: [String: String]) throws -> XMLSchemaChoiceGroup {
         XMLSchemaChoiceGroup(
             elements: [],
             minOccurs: normalized(choiceNode.attribute(named: "minOccurs")).flatMap(Int.init),
             maxOccurs: normalized(choiceNode.attribute(named: "maxOccurs")),
-            content: try parseContainerContent(from: choiceNode, namespaceMappings: namespaceMappings)
+            content: try parseContainerContent(from: choiceNode, sourceURL: sourceURL, namespaceMappings: namespaceMappings)
         )
     }
 
-    private func parseGroupReference(_ groupNode: XMLCoderNode, namespaceMappings: [String: String]) throws -> XMLSchemaGroupReference {
+    private func parseGroupReference(_ groupNode: XMLCoderNode, sourceURL: URL?, namespaceMappings: [String: String]) throws -> XMLSchemaGroupReference {
         guard let refQName = try resolveQName(
             fromQualifiedName: groupNode.attribute(named: "ref"),
             namespaceMappings: namespaceMappings,
             context: "group ref"
         ) else {
-            throw XMLSchemaParsingError.invalidSchema(name: nil, message: "group reference is missing required 'ref'.")
+            throw XMLSchemaParsingError.invalidSchema(
+                name: nil,
+                message: "group reference is missing required 'ref'.",
+                sourceLocation: XMLSchemaSourceLocation(fileURL: sourceURL, lineNumber: groupNode.lineNumber)
+            )
         }
 
         return XMLSchemaGroupReference(
@@ -566,6 +607,7 @@ extension XMLSchemaDocumentParser {
     private func parseAttributes(
         from attributeNodes: [XMLCoderNode],
         contextName: String,
+        sourceURL: URL?,
         namespaceMappings: [String: String]
     ) throws -> [XMLSchemaAttribute] {
         try attributeNodes.compactMap { attributeNode -> XMLSchemaAttribute? in
@@ -575,7 +617,8 @@ extension XMLSchemaDocumentParser {
             guard let attributeName = normalized(attributeNode.attribute(named: "name")) else {
                 throw XMLSchemaParsingError.invalidSchema(
                     name: contextName,
-                    message: "Context '\(contextName)' contains an attribute without required 'name'."
+                    message: "Context '\(contextName)' contains an attribute without required 'name'.",
+                    sourceLocation: XMLSchemaSourceLocation(fileURL: sourceURL, lineNumber: attributeNode.lineNumber)
                 )
             }
             let typeQName = try resolveQName(
@@ -621,6 +664,7 @@ extension XMLSchemaDocumentParser {
     private func parseAttributeGroupRefs(
         from attributeGroupNodes: [XMLCoderNode],
         contextName: String,
+        sourceURL: URL?,
         namespaceMappings: [String: String]
     ) throws -> [XMLQualifiedName] {
         try attributeGroupNodes.map { attributeGroupNode in
@@ -631,17 +675,22 @@ extension XMLSchemaDocumentParser {
             ) else {
                 throw XMLSchemaParsingError.invalidSchema(
                     name: contextName,
-                    message: "attributeGroup reference in '\(contextName)' is missing required 'ref'."
+                    message: "attributeGroup reference in '\(contextName)' is missing required 'ref'.",
+                    sourceLocation: XMLSchemaSourceLocation(fileURL: sourceURL, lineNumber: attributeGroupNode.lineNumber)
                 )
             }
             return refQName
         }
     }
 
-    private func parseSimpleType(_ simpleTypeNode: XMLCoderNode, namespaceMappings: [String: String]) throws -> XMLSchemaSimpleType {
+    private func parseSimpleType(_ simpleTypeNode: XMLCoderNode, sourceURL: URL?, namespaceMappings: [String: String]) throws -> XMLSchemaSimpleType {
         let annotation = parseAnnotation(from: simpleTypeNode)
         guard let name = normalized(simpleTypeNode.attribute(named: "name")) else {
-            throw XMLSchemaParsingError.invalidSchema(name: nil, message: "simpleType node is missing required 'name'.")
+            throw XMLSchemaParsingError.invalidSchema(
+                name: nil,
+                message: "simpleType node is missing required 'name'.",
+                sourceLocation: XMLSchemaSourceLocation(fileURL: sourceURL, lineNumber: simpleTypeNode.lineNumber)
+            )
         }
 
         let restrictionNode = simpleTypeNode.children().first(where: { $0.name == "restriction" })
