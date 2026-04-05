@@ -1,0 +1,726 @@
+import Foundation
+
+public struct XMLSchemaSet: Sendable, Equatable {
+    public let schemas: [XMLSchema]
+
+    public init(schemas: [XMLSchema]) {
+        self.schemas = schemas
+    }
+
+    public func merging(_ other: XMLSchemaSet) -> XMLSchemaSet {
+        XMLSchemaSet(schemas: schemas + other.schemas)
+    }
+}
+
+public struct XMLSchemaQName: Sendable, Equatable, Hashable, Codable {
+    public let rawValue: String
+    public let prefix: String?
+    public let localName: String
+    public let namespaceURI: String?
+
+    public init(rawValue: String, prefix: String?, localName: String, namespaceURI: String?) {
+        self.rawValue = rawValue
+        self.prefix = prefix
+        self.localName = localName
+        self.namespaceURI = namespaceURI
+    }
+}
+
+public struct XMLSchemaOccurrenceBounds: Sendable, Equatable, Codable {
+    public let minOccurs: Int
+    public let maxOccurs: Int?
+
+    public init(minOccurs: Int = 1, maxOccurs: Int? = 1) {
+        self.minOccurs = minOccurs
+        self.maxOccurs = maxOccurs
+    }
+
+    public static func from(minOccurs: Int?, maxOccurs: String?) -> XMLSchemaOccurrenceBounds {
+        let resolvedMinOccurs = minOccurs ?? 1
+        let resolvedMaxOccurs: Int?
+        if let maxOccurs = maxOccurs {
+            resolvedMaxOccurs = maxOccurs == "unbounded" ? nil : Int(maxOccurs)
+        } else {
+            resolvedMaxOccurs = 1
+        }
+        return XMLSchemaOccurrenceBounds(minOccurs: resolvedMinOccurs, maxOccurs: resolvedMaxOccurs)
+    }
+}
+
+public struct XMLSchemaAnnotation: Sendable, Equatable, Codable {
+    public let documentation: [String]
+    public let appinfo: [String]
+
+    public init(documentation: [String] = [], appinfo: [String] = []) {
+        self.documentation = documentation
+        self.appinfo = appinfo
+    }
+
+    public var isEmpty: Bool {
+        documentation.isEmpty && appinfo.isEmpty
+    }
+}
+
+public enum XMLSchemaContentDerivationKind: String, Sendable, Equatable, Codable {
+    case `extension`
+    case restriction
+}
+
+public enum XMLSchemaSimpleTypeDerivationKind: String, Sendable, Equatable, Codable {
+    case restriction
+    case list
+    case union
+}
+
+public enum XMLSchemaWildcardKind: String, Sendable, Equatable, Codable {
+    case element
+    case attribute
+}
+
+public struct XMLSchemaWildcard: Sendable, Equatable, Codable {
+    public let kind: XMLSchemaWildcardKind
+    public let namespaceConstraint: String?
+    public let processContents: String?
+    public let minOccurs: Int?
+    public let maxOccurs: String?
+
+    public init(
+        kind: XMLSchemaWildcardKind,
+        namespaceConstraint: String? = nil,
+        processContents: String? = nil,
+        minOccurs: Int? = nil,
+        maxOccurs: String? = nil
+    ) {
+        self.kind = kind
+        self.namespaceConstraint = namespaceConstraint
+        self.processContents = processContents
+        self.minOccurs = minOccurs
+        self.maxOccurs = maxOccurs
+    }
+
+    public var occurrenceBounds: XMLSchemaOccurrenceBounds {
+        XMLSchemaOccurrenceBounds.from(minOccurs: minOccurs, maxOccurs: maxOccurs)
+    }
+}
+
+public struct XMLSchemaGroupReference: Sendable, Equatable, Codable {
+    public let refQName: XMLSchemaQName
+    public let minOccurs: Int?
+    public let maxOccurs: String?
+
+    public init(refQName: XMLSchemaQName, minOccurs: Int? = nil, maxOccurs: String? = nil) {
+        self.refQName = refQName
+        self.minOccurs = minOccurs
+        self.maxOccurs = maxOccurs
+    }
+
+    public var occurrenceBounds: XMLSchemaOccurrenceBounds {
+        XMLSchemaOccurrenceBounds.from(minOccurs: minOccurs, maxOccurs: maxOccurs)
+    }
+}
+
+public enum XMLSchemaContentNode: Sendable, Equatable {
+    case element(XMLSchemaElement)
+    case choice(XMLSchemaChoiceGroup)
+    case groupReference(XMLSchemaGroupReference)
+    case wildcard(XMLSchemaWildcard)
+}
+
+public struct XMLSchemaAnonymousSimpleType: Sendable, Equatable {
+    public let annotation: XMLSchemaAnnotation?
+    public let baseQName: XMLSchemaQName?
+    public let enumerationValues: [String]
+    public let pattern: String?
+    public let facets: XMLSchemaFacetSet?
+    public let derivationKind: XMLSchemaSimpleTypeDerivationKind
+    public let listItemQName: XMLSchemaQName?
+    public let unionMemberQNames: [XMLSchemaQName]
+    public let unionInlineSimpleTypes: [XMLSchemaAnonymousSimpleType]
+
+    public init(
+        annotation: XMLSchemaAnnotation? = nil,
+        baseQName: XMLSchemaQName?,
+        enumerationValues: [String],
+        pattern: String?,
+        facets: XMLSchemaFacetSet? = nil,
+        derivationKind: XMLSchemaSimpleTypeDerivationKind = .restriction,
+        listItemQName: XMLSchemaQName? = nil,
+        unionMemberQNames: [XMLSchemaQName] = [],
+        unionInlineSimpleTypes: [XMLSchemaAnonymousSimpleType] = []
+    ) {
+        self.annotation = annotation
+        self.baseQName = baseQName
+        self.enumerationValues = enumerationValues
+        self.pattern = pattern
+        self.facets = facets
+        self.derivationKind = derivationKind
+        self.listItemQName = listItemQName
+        self.unionMemberQNames = unionMemberQNames
+        self.unionInlineSimpleTypes = unionInlineSimpleTypes
+    }
+}
+
+public struct XMLSchemaAnonymousComplexType: Sendable, Equatable {
+    public let annotation: XMLSchemaAnnotation?
+    public let baseQName: XMLSchemaQName?
+    public let baseDerivationKind: XMLSchemaContentDerivationKind?
+    public let simpleContentBaseQName: XMLSchemaQName?
+    public let simpleContentDerivationKind: XMLSchemaContentDerivationKind?
+    public let isAbstract: Bool
+    public let content: [XMLSchemaContentNode]
+    public let attributes: [XMLSchemaAttribute]
+    public let attributeRefs: [XMLSchemaAttributeReference]
+    public let attributeGroupRefs: [XMLSchemaQName]
+    public let anyAttribute: XMLSchemaWildcard?
+
+    public var sequence: [XMLSchemaElement] {
+        content.compactMap { node in
+            guard case let .element(element) = node else { return nil }
+            return element
+        }
+    }
+
+    public var choiceGroups: [XMLSchemaChoiceGroup] {
+        content.compactMap { node in
+            guard case let .choice(choiceGroup) = node else { return nil }
+            return choiceGroup
+        }
+    }
+
+    public var groupReferences: [XMLSchemaGroupReference] {
+        content.compactMap { node in
+            guard case let .groupReference(reference) = node else { return nil }
+            return reference
+        }
+    }
+
+    public var anyElements: [XMLSchemaWildcard] {
+        content.compactMap { node in
+            guard case let .wildcard(wildcard) = node else { return nil }
+            return wildcard
+        }
+    }
+
+    public init(
+        annotation: XMLSchemaAnnotation? = nil,
+        baseQName: XMLSchemaQName? = nil,
+        baseDerivationKind: XMLSchemaContentDerivationKind? = nil,
+        simpleContentBaseQName: XMLSchemaQName? = nil,
+        simpleContentDerivationKind: XMLSchemaContentDerivationKind? = nil,
+        isAbstract: Bool = false,
+        sequence: [XMLSchemaElement] = [],
+        choiceGroups: [XMLSchemaChoiceGroup] = [],
+        groupReferences: [XMLSchemaGroupReference] = [],
+        anyElements: [XMLSchemaWildcard] = [],
+        content: [XMLSchemaContentNode]? = nil,
+        attributes: [XMLSchemaAttribute],
+        attributeRefs: [XMLSchemaAttributeReference] = [],
+        attributeGroupRefs: [XMLSchemaQName] = [],
+        anyAttribute: XMLSchemaWildcard? = nil
+    ) {
+        self.annotation = annotation
+        self.baseQName = baseQName
+        self.baseDerivationKind = baseDerivationKind
+        self.simpleContentBaseQName = simpleContentBaseQName
+        self.simpleContentDerivationKind = simpleContentDerivationKind
+        self.isAbstract = isAbstract
+        self.content = content ?? XMLSchemaAnonymousComplexType.makeContent(
+            sequence: sequence,
+            choiceGroups: choiceGroups,
+            groupReferences: groupReferences,
+            anyElements: anyElements
+        )
+        self.attributes = attributes
+        self.attributeRefs = attributeRefs
+        self.attributeGroupRefs = attributeGroupRefs
+        self.anyAttribute = anyAttribute
+    }
+
+    private static func makeContent(
+        sequence: [XMLSchemaElement],
+        choiceGroups: [XMLSchemaChoiceGroup],
+        groupReferences: [XMLSchemaGroupReference],
+        anyElements: [XMLSchemaWildcard]
+    ) -> [XMLSchemaContentNode] {
+        sequence.map(XMLSchemaContentNode.element) +
+            choiceGroups.map(XMLSchemaContentNode.choice) +
+            groupReferences.map(XMLSchemaContentNode.groupReference) +
+            anyElements.map(XMLSchemaContentNode.wildcard)
+    }
+}
+
+public struct XMLSchema: Sendable, Equatable {
+    public let annotation: XMLSchemaAnnotation?
+    public let targetNamespace: String?
+    public let imports: [XMLSchemaImport]
+    public let includes: [XMLSchemaInclude]
+    public let elements: [XMLSchemaElement]
+    public let attributeDefinitions: [XMLSchemaAttribute]
+    public let attributeGroups: [XMLSchemaAttributeGroup]
+    public let modelGroups: [XMLSchemaModelGroup]
+    public let complexTypes: [XMLSchemaComplexType]
+    public let simpleTypes: [XMLSchemaSimpleType]
+
+    public init(
+        annotation: XMLSchemaAnnotation? = nil,
+        targetNamespace: String?,
+        imports: [XMLSchemaImport],
+        includes: [XMLSchemaInclude],
+        elements: [XMLSchemaElement],
+        attributeDefinitions: [XMLSchemaAttribute] = [],
+        attributeGroups: [XMLSchemaAttributeGroup] = [],
+        modelGroups: [XMLSchemaModelGroup] = [],
+        complexTypes: [XMLSchemaComplexType],
+        simpleTypes: [XMLSchemaSimpleType]
+    ) {
+        self.annotation = annotation
+        self.targetNamespace = targetNamespace
+        self.imports = imports
+        self.includes = includes
+        self.elements = elements
+        self.attributeDefinitions = attributeDefinitions
+        self.attributeGroups = attributeGroups
+        self.modelGroups = modelGroups
+        self.complexTypes = complexTypes
+        self.simpleTypes = simpleTypes
+    }
+}
+
+public struct XMLSchemaImport: Sendable, Equatable {
+    public let namespace: String?
+    public let schemaLocation: String?
+
+    public init(namespace: String?, schemaLocation: String?) {
+        self.namespace = namespace
+        self.schemaLocation = schemaLocation
+    }
+}
+
+public struct XMLSchemaInclude: Sendable, Equatable {
+    public let schemaLocation: String
+
+    public init(schemaLocation: String) {
+        self.schemaLocation = schemaLocation
+    }
+}
+
+public struct XMLSchemaElement: Sendable, Equatable {
+    public let annotation: XMLSchemaAnnotation?
+    public let name: String
+    public let typeQName: XMLSchemaQName?
+    public let refQName: XMLSchemaQName?
+    public let minOccurs: Int?
+    public let maxOccurs: String?
+    public let nillable: Bool
+    public let defaultValue: String?
+    public let fixedValue: String?
+    public let isAbstract: Bool
+    public let substitutionGroup: XMLSchemaQName?
+    public let inlineComplexType: XMLSchemaAnonymousComplexType?
+    public let inlineSimpleType: XMLSchemaAnonymousSimpleType?
+
+    public var inlineSequenceElements: [XMLSchemaElement] {
+        inlineComplexType?.sequence ?? []
+    }
+
+    public var occurrenceBounds: XMLSchemaOccurrenceBounds {
+        XMLSchemaOccurrenceBounds.from(minOccurs: minOccurs, maxOccurs: maxOccurs)
+    }
+
+    public init(
+        annotation: XMLSchemaAnnotation? = nil,
+        name: String,
+        typeQName: XMLSchemaQName?,
+        refQName: XMLSchemaQName?,
+        minOccurs: Int?,
+        maxOccurs: String?,
+        nillable: Bool,
+        defaultValue: String? = nil,
+        fixedValue: String? = nil,
+        isAbstract: Bool = false,
+        substitutionGroup: XMLSchemaQName? = nil,
+        inlineSequenceElements: [XMLSchemaElement] = [],
+        inlineComplexType: XMLSchemaAnonymousComplexType? = nil,
+        inlineSimpleType: XMLSchemaAnonymousSimpleType? = nil
+    ) {
+        self.annotation = annotation
+        self.name = name
+        self.typeQName = typeQName
+        self.refQName = refQName
+        self.minOccurs = minOccurs
+        self.maxOccurs = maxOccurs
+        self.nillable = nillable
+        self.defaultValue = defaultValue
+        self.fixedValue = fixedValue
+        self.isAbstract = isAbstract
+        self.substitutionGroup = substitutionGroup
+        if let inlineComplexType = inlineComplexType {
+            self.inlineComplexType = inlineComplexType
+        } else if !inlineSequenceElements.isEmpty {
+            self.inlineComplexType = XMLSchemaAnonymousComplexType(
+                sequence: inlineSequenceElements,
+                attributes: []
+            )
+        } else {
+            self.inlineComplexType = nil
+        }
+        self.inlineSimpleType = inlineSimpleType
+    }
+}
+
+public struct XMLSchemaComplexType: Sendable, Equatable {
+    public let annotation: XMLSchemaAnnotation?
+    public let name: String
+    public let baseQName: XMLSchemaQName?
+    public let baseDerivationKind: XMLSchemaContentDerivationKind?
+    public let simpleContentBaseQName: XMLSchemaQName?
+    public let simpleContentDerivationKind: XMLSchemaContentDerivationKind?
+    public let isAbstract: Bool
+    public let content: [XMLSchemaContentNode]
+    public let attributes: [XMLSchemaAttribute]
+    public let attributeRefs: [XMLSchemaAttributeReference]
+    public let attributeGroupRefs: [XMLSchemaQName]
+    public let anyAttribute: XMLSchemaWildcard?
+
+    public var sequence: [XMLSchemaElement] {
+        content.compactMap { node in
+            guard case let .element(element) = node else { return nil }
+            return element
+        }
+    }
+
+    public var choiceGroups: [XMLSchemaChoiceGroup] {
+        content.compactMap { node in
+            guard case let .choice(choiceGroup) = node else { return nil }
+            return choiceGroup
+        }
+    }
+
+    public var groupReferences: [XMLSchemaGroupReference] {
+        content.compactMap { node in
+            guard case let .groupReference(reference) = node else { return nil }
+            return reference
+        }
+    }
+
+    public var anyElements: [XMLSchemaWildcard] {
+        content.compactMap { node in
+            guard case let .wildcard(wildcard) = node else { return nil }
+            return wildcard
+        }
+    }
+
+    public var choice: [XMLSchemaElement] {
+        choiceGroups.flatMap(\.elements)
+    }
+
+    public init(
+        annotation: XMLSchemaAnnotation? = nil,
+        name: String,
+        baseQName: XMLSchemaQName? = nil,
+        baseDerivationKind: XMLSchemaContentDerivationKind? = nil,
+        simpleContentBaseQName: XMLSchemaQName? = nil,
+        simpleContentDerivationKind: XMLSchemaContentDerivationKind? = nil,
+        isAbstract: Bool = false,
+        sequence: [XMLSchemaElement],
+        choice: [XMLSchemaElement] = [],
+        choiceGroups: [XMLSchemaChoiceGroup]? = nil,
+        groupReferences: [XMLSchemaGroupReference] = [],
+        anyElements: [XMLSchemaWildcard] = [],
+        content: [XMLSchemaContentNode]? = nil,
+        attributes: [XMLSchemaAttribute],
+        attributeRefs: [XMLSchemaAttributeReference] = [],
+        attributeGroupRefs: [XMLSchemaQName] = [],
+        anyAttribute: XMLSchemaWildcard? = nil
+    ) {
+        self.annotation = annotation
+        self.name = name
+        self.baseQName = baseQName
+        self.baseDerivationKind = baseDerivationKind
+        self.simpleContentBaseQName = simpleContentBaseQName
+        self.simpleContentDerivationKind = simpleContentDerivationKind
+        self.isAbstract = isAbstract
+        let resolvedChoiceGroups = choiceGroups ?? (choice.isEmpty ? [] : [XMLSchemaChoiceGroup(elements: choice)])
+        self.content = content ?? XMLSchemaComplexType.makeContent(
+            sequence: sequence,
+            choiceGroups: resolvedChoiceGroups,
+            groupReferences: groupReferences,
+            anyElements: anyElements
+        )
+        self.attributes = attributes
+        self.attributeRefs = attributeRefs
+        self.attributeGroupRefs = attributeGroupRefs
+        self.anyAttribute = anyAttribute
+    }
+
+    private static func makeContent(
+        sequence: [XMLSchemaElement],
+        choiceGroups: [XMLSchemaChoiceGroup],
+        groupReferences: [XMLSchemaGroupReference],
+        anyElements: [XMLSchemaWildcard]
+    ) -> [XMLSchemaContentNode] {
+        sequence.map(XMLSchemaContentNode.element) +
+            choiceGroups.map(XMLSchemaContentNode.choice) +
+            groupReferences.map(XMLSchemaContentNode.groupReference) +
+            anyElements.map(XMLSchemaContentNode.wildcard)
+    }
+}
+
+public struct XMLSchemaChoiceGroup: Sendable, Equatable {
+    public let content: [XMLSchemaContentNode]
+    public let minOccurs: Int?
+    public let maxOccurs: String?
+
+    public var elements: [XMLSchemaElement] {
+        content.compactMap { node in
+            guard case let .element(element) = node else { return nil }
+            return element
+        }
+    }
+
+    public var groupReferences: [XMLSchemaGroupReference] {
+        content.compactMap { node in
+            guard case let .groupReference(reference) = node else { return nil }
+            return reference
+        }
+    }
+
+    public var anyElements: [XMLSchemaWildcard] {
+        content.compactMap { node in
+            guard case let .wildcard(wildcard) = node else { return nil }
+            return wildcard
+        }
+    }
+
+    public var occurrenceBounds: XMLSchemaOccurrenceBounds {
+        XMLSchemaOccurrenceBounds.from(minOccurs: minOccurs, maxOccurs: maxOccurs)
+    }
+
+    public init(
+        elements: [XMLSchemaElement],
+        minOccurs: Int? = nil,
+        maxOccurs: String? = nil,
+        groupReferences: [XMLSchemaGroupReference] = [],
+        anyElements: [XMLSchemaWildcard] = [],
+        content: [XMLSchemaContentNode]? = nil
+    ) {
+        self.content = content ?? XMLSchemaChoiceGroup.makeContent(
+            elements: elements,
+            groupReferences: groupReferences,
+            anyElements: anyElements
+        )
+        self.minOccurs = minOccurs
+        self.maxOccurs = maxOccurs
+    }
+
+    private static func makeContent(
+        elements: [XMLSchemaElement],
+        groupReferences: [XMLSchemaGroupReference],
+        anyElements: [XMLSchemaWildcard]
+    ) -> [XMLSchemaContentNode] {
+        elements.map(XMLSchemaContentNode.element) +
+            groupReferences.map(XMLSchemaContentNode.groupReference) +
+            anyElements.map(XMLSchemaContentNode.wildcard)
+    }
+}
+
+public struct XMLSchemaModelGroup: Sendable, Equatable {
+    public let name: String
+    public let content: [XMLSchemaContentNode]
+
+    public var sequence: [XMLSchemaElement] {
+        content.compactMap { node in
+            guard case let .element(element) = node else { return nil }
+            return element
+        }
+    }
+
+    public var choiceGroups: [XMLSchemaChoiceGroup] {
+        content.compactMap { node in
+            guard case let .choice(choiceGroup) = node else { return nil }
+            return choiceGroup
+        }
+    }
+
+    public var groupReferences: [XMLSchemaGroupReference] {
+        content.compactMap { node in
+            guard case let .groupReference(reference) = node else { return nil }
+            return reference
+        }
+    }
+
+    public var anyElements: [XMLSchemaWildcard] {
+        content.compactMap { node in
+            guard case let .wildcard(wildcard) = node else { return nil }
+            return wildcard
+        }
+    }
+
+    public init(
+        name: String,
+        sequence: [XMLSchemaElement] = [],
+        choiceGroups: [XMLSchemaChoiceGroup] = [],
+        groupReferences: [XMLSchemaGroupReference] = [],
+        anyElements: [XMLSchemaWildcard] = [],
+        content: [XMLSchemaContentNode]? = nil
+    ) {
+        self.name = name
+        self.content = content ?? sequence.map(XMLSchemaContentNode.element) +
+            choiceGroups.map(XMLSchemaContentNode.choice) +
+            groupReferences.map(XMLSchemaContentNode.groupReference) +
+            anyElements.map(XMLSchemaContentNode.wildcard)
+    }
+}
+
+public struct XMLSchemaFacetSet: Sendable, Equatable {
+    public let enumeration: [String]
+    public let pattern: String?
+    public let minLength: Int?
+    public let maxLength: Int?
+    public let length: Int?
+    public let minInclusive: String?
+    public let maxInclusive: String?
+    public let minExclusive: String?
+    public let maxExclusive: String?
+    public let totalDigits: Int?
+    public let fractionDigits: Int?
+
+    public init(
+        enumeration: [String] = [],
+        pattern: String? = nil,
+        minLength: Int? = nil,
+        maxLength: Int? = nil,
+        length: Int? = nil,
+        minInclusive: String? = nil,
+        maxInclusive: String? = nil,
+        minExclusive: String? = nil,
+        maxExclusive: String? = nil,
+        totalDigits: Int? = nil,
+        fractionDigits: Int? = nil
+    ) {
+        self.enumeration = enumeration
+        self.pattern = pattern
+        self.minLength = minLength
+        self.maxLength = maxLength
+        self.length = length
+        self.minInclusive = minInclusive
+        self.maxInclusive = maxInclusive
+        self.minExclusive = minExclusive
+        self.maxExclusive = maxExclusive
+        self.totalDigits = totalDigits
+        self.fractionDigits = fractionDigits
+    }
+
+    public var isEmpty: Bool {
+        enumeration.isEmpty && pattern == nil && minLength == nil &&
+            maxLength == nil && length == nil && minInclusive == nil &&
+            maxInclusive == nil && minExclusive == nil && maxExclusive == nil &&
+            totalDigits == nil && fractionDigits == nil
+    }
+}
+
+public struct XMLSchemaSimpleType: Sendable, Equatable {
+    public let annotation: XMLSchemaAnnotation?
+    public let name: String
+    public let baseQName: XMLSchemaQName?
+    public let enumerationValues: [String]
+    public let pattern: String?
+    public let facets: XMLSchemaFacetSet?
+    public let derivationKind: XMLSchemaSimpleTypeDerivationKind
+    public let listItemQName: XMLSchemaQName?
+    public let unionMemberQNames: [XMLSchemaQName]
+    public let unionInlineSimpleTypes: [XMLSchemaAnonymousSimpleType]
+
+    public init(
+        annotation: XMLSchemaAnnotation? = nil,
+        name: String,
+        baseQName: XMLSchemaQName?,
+        enumerationValues: [String],
+        pattern: String?,
+        facets: XMLSchemaFacetSet? = nil,
+        derivationKind: XMLSchemaSimpleTypeDerivationKind = .restriction,
+        listItemQName: XMLSchemaQName? = nil,
+        unionMemberQNames: [XMLSchemaQName] = [],
+        unionInlineSimpleTypes: [XMLSchemaAnonymousSimpleType] = []
+    ) {
+        self.annotation = annotation
+        self.name = name
+        self.baseQName = baseQName
+        self.enumerationValues = enumerationValues
+        self.pattern = pattern
+        self.facets = facets
+        self.derivationKind = derivationKind
+        self.listItemQName = listItemQName
+        self.unionMemberQNames = unionMemberQNames
+        self.unionInlineSimpleTypes = unionInlineSimpleTypes
+    }
+}
+
+public struct XMLSchemaAttribute: Sendable, Equatable {
+    public let annotation: XMLSchemaAnnotation?
+    public let name: String
+    public let typeQName: XMLSchemaQName?
+    public let use: String?
+    public let defaultValue: String?
+    public let fixedValue: String?
+    public let inlineSimpleType: XMLSchemaAnonymousSimpleType?
+
+    public init(
+        annotation: XMLSchemaAnnotation? = nil,
+        name: String,
+        typeQName: XMLSchemaQName?,
+        use: String?,
+        defaultValue: String? = nil,
+        fixedValue: String? = nil,
+        inlineSimpleType: XMLSchemaAnonymousSimpleType? = nil
+    ) {
+        self.annotation = annotation
+        self.name = name
+        self.typeQName = typeQName
+        self.use = use
+        self.defaultValue = defaultValue
+        self.fixedValue = fixedValue
+        self.inlineSimpleType = inlineSimpleType
+    }
+}
+
+public struct XMLSchemaAttributeReference: Sendable, Equatable {
+    public let refQName: XMLSchemaQName
+    public let use: String?
+    public let defaultValue: String?
+    public let fixedValue: String?
+    public let annotation: XMLSchemaAnnotation?
+
+    public init(
+        refQName: XMLSchemaQName,
+        use: String? = nil,
+        defaultValue: String? = nil,
+        fixedValue: String? = nil,
+        annotation: XMLSchemaAnnotation? = nil
+    ) {
+        self.refQName = refQName
+        self.use = use
+        self.defaultValue = defaultValue
+        self.fixedValue = fixedValue
+        self.annotation = annotation
+    }
+}
+
+public struct XMLSchemaAttributeGroup: Sendable, Equatable {
+    public let name: String
+    public let attributes: [XMLSchemaAttribute]
+    public let attributeRefs: [XMLSchemaAttributeReference]
+    public let attributeGroupRefs: [XMLSchemaQName]
+
+    public init(
+        name: String,
+        attributes: [XMLSchemaAttribute],
+        attributeRefs: [XMLSchemaAttributeReference] = [],
+        attributeGroupRefs: [XMLSchemaQName] = []
+    ) {
+        self.name = name
+        self.attributes = attributes
+        self.attributeRefs = attributeRefs
+        self.attributeGroupRefs = attributeGroupRefs
+    }
+}

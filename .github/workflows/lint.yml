@@ -1,0 +1,33 @@
+name: SwiftLint
+
+on:
+  push:
+    branches: [ "main" ]
+  pull_request:
+    branches: [ "main" ]
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  swiftlint:
+    name: SwiftLint
+    runs-on: macos-15
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Cache SwiftLint
+        id: cache-swiftlint
+        uses: actions/cache@v4
+        with:
+          path: /usr/local/bin/swiftlint
+          key: ${{ runner.os }}-swiftlint
+
+      - name: Install SwiftLint
+        if: steps.cache-swiftlint.outputs.cache-hit != 'true'
+        run: brew install swiftlint
+
+      - name: Run SwiftLint
+        run: swiftlint lint --reporter github-actions-logging

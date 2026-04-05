@@ -1,0 +1,8 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+if ! git diff --cached --name-only | grep -q .; then
+  exit 0
+fi
+
+echo "pre-commit: remember to run build/test/lint before closure."
