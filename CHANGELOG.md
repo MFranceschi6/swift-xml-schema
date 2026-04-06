@@ -6,6 +6,15 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 ## [Unreleased]
 
+### Changed — Phase 1.0 API Cleanup
+
+- **`XMLSchemaAttributeUseKind` enum** (new): replaces `use: String?` on `XMLSchemaAttribute`, `XMLSchemaAttributeReference`, `XMLNormalizedAttributeUse`, and `XMLNormalizedAttributeDefinition`. Valid cases: `.required`, `.optional`, `.prohibited`. The parser maps the XSD `use` attribute value to the enum; unknown values are silently dropped to `nil`.
+- **`XMLSchemaWildcardProcessContents` enum** (new): replaces `processContents: String?` on `XMLSchemaWildcard`. Valid cases: `.strict`, `.lax`, `.skip`. The parser maps the XSD `processContents` attribute value; unknown values are silently dropped to `nil`.
+- **`XMLSchemaParsingResult` is now internal**: the type was declared public but never returned by any public API. It is retained internally for future use when the parser threads non-fatal warning collection through its internals. Callers who referenced it directly should remove the dependency.
+- **`XMLNormalizedSchemaSet` flat iterators** (new): `allElements`, `allComplexTypes`, `allSimpleTypes`, `allAttributeDefinitions`, `allAttributeGroups`, `allModelGroups` — cross-schema `flatMap` shortcuts so callers no longer need `schemaSet.schemas.flatMap { $0.complexTypes }`.
+- **`XMLNormalizedSchemaSet` `XMLQualifiedName` overloads** (new): `element(_:)`, `complexType(_:)`, `simpleType(_:)`, `attribute(_:)`, `attributeGroup(_:)`, `modelGroup(_:)` — accept an `XMLQualifiedName` directly, forwarding to the existing `(named:namespaceURI:)` overloads.
+- **`XMLSchemaWalker.walkComponents(collecting:)`** (new): generic overload that collects and returns `[R]` from visitor methods, for visitors with a non-`Void` result type. The existing `walkComponents(visitor:)` (`Result == Void`) is unchanged.
+
 ### Added — Phase 0.8 (JSON Schema Export)
 
 - **`XMLJSONSchemaExporter`**: converts an `XMLNormalizedSchemaSet` to a `XMLJSONSchemaDocument` conforming to JSON Schema draft 2020-12. Reads `effectiveContent` and `effectiveAttributes` exclusively (matching the SCHEMA_FORMAT.md recommendation).

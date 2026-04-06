@@ -136,7 +136,7 @@ public struct XMLNormalizedAttributeDefinition: Sendable, Equatable, Codable {
     public let name: String
     public let namespaceURI: String?
     public let typeQName: XMLQualifiedName?
-    public let use: String?
+    public let use: XMLSchemaAttributeUseKind?
     public let defaultValue: String?
     public let fixedValue: String?
 
@@ -146,7 +146,7 @@ public struct XMLNormalizedAttributeDefinition: Sendable, Equatable, Codable {
         name: String,
         namespaceURI: String?,
         typeQName: XMLQualifiedName?,
-        use: String?,
+        use: XMLSchemaAttributeUseKind?,
         defaultValue: String?,
         fixedValue: String?
     ) {
@@ -167,7 +167,7 @@ public struct XMLNormalizedAttributeUse: Sendable, Equatable, Codable {
     public let name: String
     public let namespaceURI: String?
     public let typeQName: XMLQualifiedName?
-    public let use: String?
+    public let use: XMLSchemaAttributeUseKind?
     public let defaultValue: String?
     public let fixedValue: String?
 
@@ -177,7 +177,7 @@ public struct XMLNormalizedAttributeUse: Sendable, Equatable, Codable {
         name: String,
         namespaceURI: String?,
         typeQName: XMLQualifiedName?,
-        use: String?,
+        use: XMLSchemaAttributeUseKind?,
         defaultValue: String?,
         fixedValue: String?
     ) {
@@ -558,6 +558,38 @@ public struct XMLNormalizedSchemaSet: Sendable, Equatable, Codable {
         derivedSimpleTypeIndex = dsIdx
     }
 
+    // MARK: - Cross-schema flat iterators
+
+    /// All top-level element declarations across every schema in the set, in declaration order.
+    public var allElements: [XMLNormalizedElementDeclaration] {
+        schemas.flatMap(\.elements)
+    }
+
+    /// All named complex type definitions across every schema in the set, in declaration order.
+    public var allComplexTypes: [XMLNormalizedComplexType] {
+        schemas.flatMap(\.complexTypes)
+    }
+
+    /// All named simple type definitions across every schema in the set, in declaration order.
+    public var allSimpleTypes: [XMLNormalizedSimpleType] {
+        schemas.flatMap(\.simpleTypes)
+    }
+
+    /// All top-level attribute declarations across every schema in the set, in declaration order.
+    public var allAttributeDefinitions: [XMLNormalizedAttributeDefinition] {
+        schemas.flatMap(\.attributeDefinitions)
+    }
+
+    /// All named attribute group definitions across every schema in the set, in declaration order.
+    public var allAttributeGroups: [XMLNormalizedAttributeGroup] {
+        schemas.flatMap(\.attributeGroups)
+    }
+
+    /// All named model group definitions across every schema in the set, in declaration order.
+    public var allModelGroups: [XMLNormalizedModelGroup] {
+        schemas.flatMap(\.modelGroups)
+    }
+
     // MARK: - O(1) Component Lookups
 
     public func element(named localName: String, namespaceURI: String?) -> XMLNormalizedElementDeclaration? {
@@ -626,6 +658,38 @@ public struct XMLNormalizedSchemaSet: Sendable, Equatable, Codable {
 
     public func substitutionGroupMembers(ofLocalName localName: String, namespaceURI: String?) -> [XMLNormalizedElementDeclaration] {
         substitutionGroupIndex[Self.makeLookupKey(namespaceURI: namespaceURI, localName: localName)] ?? []
+    }
+
+    // MARK: - XMLQualifiedName overloads
+
+    /// Looks up the element declaration for a given qualified name.
+    public func element(_ qname: XMLQualifiedName) -> XMLNormalizedElementDeclaration? {
+        element(named: qname.localName, namespaceURI: qname.namespaceURI)
+    }
+
+    /// Looks up the complex type for a given qualified name.
+    public func complexType(_ qname: XMLQualifiedName) -> XMLNormalizedComplexType? {
+        complexType(named: qname.localName, namespaceURI: qname.namespaceURI)
+    }
+
+    /// Looks up the simple type for a given qualified name.
+    public func simpleType(_ qname: XMLQualifiedName) -> XMLNormalizedSimpleType? {
+        simpleType(named: qname.localName, namespaceURI: qname.namespaceURI)
+    }
+
+    /// Looks up the attribute definition for a given qualified name.
+    public func attribute(_ qname: XMLQualifiedName) -> XMLNormalizedAttributeDefinition? {
+        attribute(named: qname.localName, namespaceURI: qname.namespaceURI)
+    }
+
+    /// Looks up the attribute group for a given qualified name.
+    public func attributeGroup(_ qname: XMLQualifiedName) -> XMLNormalizedAttributeGroup? {
+        attributeGroup(named: qname.localName, namespaceURI: qname.namespaceURI)
+    }
+
+    /// Looks up the model group for a given qualified name.
+    public func modelGroup(_ qname: XMLQualifiedName) -> XMLNormalizedModelGroup? {
+        modelGroup(named: qname.localName, namespaceURI: qname.namespaceURI)
     }
 
     // MARK: - Type Hierarchy Navigator
@@ -1796,7 +1860,7 @@ private extension XMLSchemaNormalizer {
             if let existingIndex = merged.firstIndex(where: {
                 makeLookupKey(namespaceURI: $0.namespaceURI, localName: $0.name) == key
             }) {
-                if derivationKind == .restriction && declaredAttribute.use == "prohibited" {
+                if derivationKind == .restriction && declaredAttribute.use == .prohibited {
                     merged.remove(at: existingIndex)
                 } else {
                     merged[existingIndex] = declaredAttribute
@@ -1804,7 +1868,7 @@ private extension XMLSchemaNormalizer {
                 continue
             }
 
-            if derivationKind == .restriction && declaredAttribute.use == "prohibited" {
+            if derivationKind == .restriction && declaredAttribute.use == .prohibited {
                 continue
             }
 

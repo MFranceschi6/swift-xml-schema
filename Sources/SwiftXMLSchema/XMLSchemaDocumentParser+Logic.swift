@@ -671,10 +671,12 @@ extension XMLSchemaDocumentParser {
     }
 
     private func parseWildcard(_ wildcardNode: XMLCoderNode, kind: XMLSchemaWildcardKind) throws -> XMLSchemaWildcard {
-        XMLSchemaWildcard(
+        let processContentsString = normalized(wildcardNode.attribute(named: "processContents"))
+        let processContents = processContentsString.flatMap(XMLSchemaWildcardProcessContents.init(rawValue:))
+        return XMLSchemaWildcard(
             kind: kind,
             namespaceConstraint: normalized(wildcardNode.attribute(named: "namespace")),
-            processContents: normalized(wildcardNode.attribute(named: "processContents")),
+            processContents: processContents,
             minOccurs: normalized(wildcardNode.attribute(named: "minOccurs")).flatMap(Int.init),
             maxOccurs: normalized(wildcardNode.attribute(named: "maxOccurs"))
         )
@@ -789,7 +791,7 @@ extension XMLSchemaDocumentParser {
                 annotation: parseAnnotation(from: attributeNode),
                 name: attributeName,
                 typeQName: typeQName,
-                use: normalized(attributeNode.attribute(named: "use")),
+                use: normalized(attributeNode.attribute(named: "use")).flatMap(XMLSchemaAttributeUseKind.init(rawValue:)),
                 defaultValue: normalized(attributeNode.attribute(named: "default")),
                 fixedValue: normalized(attributeNode.attribute(named: "fixed")),
                 inlineSimpleType: inlineSimpleType
@@ -809,7 +811,7 @@ extension XMLSchemaDocumentParser {
 
             return XMLSchemaAttributeReference(
                 refQName: refQName,
-                use: normalized(attributeNode.attribute(named: "use")),
+                use: normalized(attributeNode.attribute(named: "use")).flatMap(XMLSchemaAttributeUseKind.init(rawValue:)),
                 defaultValue: normalized(attributeNode.attribute(named: "default")),
                 fixedValue: normalized(attributeNode.attribute(named: "fixed")),
                 annotation: parseAnnotation(from: attributeNode)

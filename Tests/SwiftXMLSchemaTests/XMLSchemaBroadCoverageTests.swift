@@ -37,12 +37,12 @@ final class XMLSchemaBroadCoverageTests: XCTestCase {
         XCTAssertEqual(schema.modelGroups.map(\.name), ["SharedFields"])
         XCTAssertEqual(contact.sequence.map(\.name), ["name", "email"])
         XCTAssertEqual(contact.attributeRefs.map(\.refQName.qualifiedName), ["tns:source"])
-        XCTAssertEqual(contact.attributeRefs.first?.use, "required")
+        XCTAssertEqual(contact.attributeRefs.first?.use, .required)
         XCTAssertEqual(contact.anyAttribute?.namespaceConstraint, "##other")
-        XCTAssertEqual(contact.anyAttribute?.processContents, "lax")
+        XCTAssertEqual(contact.anyAttribute?.processContents, .lax)
         XCTAssertEqual(wrapper.groupReferences.map(\.refQName.qualifiedName), ["tns:SharedFields"])
         XCTAssertEqual(wrapper.anyElements.first?.namespaceConstraint, "##other")
-        XCTAssertEqual(wrapper.anyElements.first?.processContents, "skip")
+        XCTAssertEqual(wrapper.anyElements.first?.processContents, .skip)
     }
 
     func test_parseInlineAnonymousTypesListUnionAndExclusiveFacets() throws {

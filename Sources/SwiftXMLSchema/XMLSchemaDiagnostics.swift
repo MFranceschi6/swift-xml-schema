@@ -74,28 +74,24 @@ extension XMLSchemaParsingDiagnostic: CustomStringConvertible {
     }
 }
 
-// MARK: - XMLSchemaParsingResult
+// MARK: - XMLSchemaParsingResult (internal — not yet connected to parser output)
 
-/// A successfully parsed value together with any non-fatal diagnostics emitted
-/// during parsing.
-///
-/// Fatal errors cause a throw instead of producing an ``XMLSchemaParsingResult``.
-public struct XMLSchemaParsingResult<Value: Sendable>: Sendable {
-    /// The parsed value.
-    public let value: Value
-    /// All non-fatal diagnostics collected during parsing, in emission order.
-    public let diagnostics: [XMLSchemaParsingDiagnostic]
+// Reserved for future use when the parser emits non-fatal warnings alongside
+// a successfully parsed value. Currently all issues cause a thrown
+// XMLSchemaParsingError; this type will become public once the parser
+// threads diagnostic collection through its internals.
+struct XMLSchemaParsingResult<Value: Sendable>: Sendable {
+    let value: Value
+    let diagnostics: [XMLSchemaParsingDiagnostic]
 
-    public init(value: Value, diagnostics: [XMLSchemaParsingDiagnostic] = []) {
+    init(value: Value, diagnostics: [XMLSchemaParsingDiagnostic] = []) {
         self.value = value
         self.diagnostics = diagnostics
     }
 
-    /// Diagnostics with `.warning` severity.
-    public var warnings: [XMLSchemaParsingDiagnostic] {
+    var warnings: [XMLSchemaParsingDiagnostic] {
         diagnostics.filter { $0.severity == .warning }
     }
 
-    /// `true` when at least one warning was emitted.
-    public var hasWarnings: Bool { !warnings.isEmpty }
+    var hasWarnings: Bool { !warnings.isEmpty }
 }

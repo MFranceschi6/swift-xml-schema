@@ -225,7 +225,7 @@ public struct XMLJSONSchemaExporter: Sendable {
         for attr in complexType.effectiveAttributes {
             let attrNode = attributeNode(for: attr)
             properties[attr.name] = attrNode
-            if attr.use == "required" {
+            if attr.use == .required {
                 required.append(attr.name)
             }
         }

@@ -19,7 +19,7 @@ final class XMLSchemaCoverageBoostTests: XCTestCase {
         let wildcard = XMLSchemaWildcard(
             kind: .element,
             namespaceConstraint: "##other",
-            processContents: "lax",
+            processContents: .lax,
             minOccurs: 0,
             maxOccurs: "unbounded"
         )
@@ -45,14 +45,14 @@ final class XMLSchemaCoverageBoostTests: XCTestCase {
             annotation: annotation,
             name: "lang",
             typeQName: builtQName,
-            use: "required",
+            use: .required,
             defaultValue: "en",
             fixedValue: "EN",
             inlineSimpleType: anonymousSimpleType
         )
         let attributeRef = XMLSchemaAttributeReference(
             refQName: builtQName,
-            use: "optional",
+            use: .optional,
             defaultValue: "fr",
             fixedValue: "FR",
             annotation: annotation
@@ -158,7 +158,7 @@ final class XMLSchemaCoverageBoostTests: XCTestCase {
         XCTAssertEqual(anonymousComplexType.sequence.map(\.name), ["child"])
         XCTAssertEqual(anonymousComplexType.choiceGroups.first?.elements.map(\.name), ["child"])
         XCTAssertEqual(anonymousComplexType.groupReferences.first?.refQName.localName, "Value")
-        XCTAssertEqual(anonymousComplexType.anyElements.first?.processContents, "lax")
+        XCTAssertEqual(anonymousComplexType.anyElements.first?.processContents, .lax)
         XCTAssertEqual(inlineSequenceElement.inlineSequenceElements.map(\.name), ["child"])
         XCTAssertEqual(complexType.sequence.map(\.name), ["child"])
         XCTAssertEqual(complexType.choice.map(\.name), ["child"])
@@ -167,7 +167,7 @@ final class XMLSchemaCoverageBoostTests: XCTestCase {
         XCTAssertEqual(modelGroup.sequence.map(\.name), ["child"])
         XCTAssertEqual(modelGroup.choiceGroups.first?.elements.map(\.name), ["child"])
         XCTAssertEqual(modelGroup.groupReferences.first?.refQName.localName, "Value")
-        XCTAssertEqual(modelGroup.anyElements.first?.processContents, "lax")
+        XCTAssertEqual(modelGroup.anyElements.first?.processContents, .lax)
         XCTAssertFalse(XMLSchemaFacetSet(pattern: "x").isEmpty)
         XCTAssertEqual(simpleType.unionMemberQNames.map(\.localName), ["Value"])
         XCTAssertEqual(attributeGroup.attributes.map(\.name), ["lang"])
@@ -202,7 +202,7 @@ final class XMLSchemaCoverageBoostTests: XCTestCase {
             name: "lang",
             namespaceURI: "urn:animals",
             typeQName: qName,
-            use: "required",
+            use: .required,
             defaultValue: "en",
             fixedValue: "EN"
         )
@@ -212,7 +212,7 @@ final class XMLSchemaCoverageBoostTests: XCTestCase {
             name: "lang",
             namespaceURI: "urn:animals",
             typeQName: qName,
-            use: "optional",
+            use: .optional,
             defaultValue: "en",
             fixedValue: "EN"
         )
