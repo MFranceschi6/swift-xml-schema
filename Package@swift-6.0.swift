@@ -9,7 +9,9 @@ let package = Package(
         .iOS(.v15)
     ],
     products: [
-        .library(name: "SwiftXMLSchema", targets: ["SwiftXMLSchema"])
+        .library(name: "SwiftXMLSchema", targets: ["SwiftXMLSchema"]),
+        .executable(name: "XMLSchemaTool", targets: ["XMLSchemaTool"]),
+        .plugin(name: "XMLSchemaPlugin", targets: ["XMLSchemaPlugin"])
     ],
     dependencies: [
         .package(url: "https://github.com/MFranceschi6/swift-xml-coder.git", from: "2.1.0"),
@@ -21,6 +23,15 @@ let package = Package(
             dependencies: [
                 .product(name: "SwiftXMLCoder", package: "swift-xml-coder")
             ]
+        ),
+        .executableTarget(
+            name: "XMLSchemaTool",
+            dependencies: ["SwiftXMLSchema"]
+        ),
+        .plugin(
+            name: "XMLSchemaPlugin",
+            capability: .buildTool(),
+            dependencies: ["XMLSchemaTool"]
         ),
         .testTarget(
             name: "SwiftXMLSchemaTests",

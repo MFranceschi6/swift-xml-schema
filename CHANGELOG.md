@@ -6,6 +6,17 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 ## [Unreleased]
 
+### Added — Phase 0.6 (Build Tool Plugin and Schema Caching)
+
+- **`Codable` on all normalised types**: `XMLNormalizedSchemaSet`, `XMLNormalizedSchema`, `XMLNormalizedComplexType`, `XMLNormalizedSimpleType`, `XMLNormalizedElementDeclaration`, `XMLNormalizedAttributeUse`, `XMLNormalizedAttributeDefinition`, `XMLNormalizedAttributeGroup`, `XMLNormalizedModelGroup`, `XMLNormalizedContentNode`, `XMLSchemaOccurrenceBounds`, `XMLSchemaWildcard`, `XMLSchemaAnnotation`, `XMLSchemaComponentID`, `XMLSchemaIdentityConstraint`, `XMLSchemaFacetSet` — all conform to `Codable`. `XMLNormalizedContentNode` uses a custom `{"kind":"element|choice|wildcard","value":{...}}` discriminated-union envelope to avoid field-name collisions with `XMLSchemaWildcard`'s own `kind` field.
+- **`XMLNormalizedSchemaSet` versioned JSON envelope**: custom `Codable` emits `schemaVersion: 1` at the top level; the decoder validates the version and reconstructs all O(1) indices by calling `init(schemas:)`.
+- **SHA-256 fingerprint** (`#if canImport(CryptoKit)`): `XMLNormalizedSchemaSet.fingerprint` returns the lowercase hex SHA-256 digest of the sorted-keys canonical JSON. Stable across invocations; changes when any schema component changes.
+- **`XMLSchemaTool` executable**: CLI that parses one or more XSD files, normalises the schema set, and writes a pretty-printed, sorted-keys JSON file plus a `.sha256` sidecar. Usage: `XMLSchemaTool <input.xsd> <output.schema.json>`.
+- **`XMLSchemaPlugin` SPM BuildToolPlugin**: for each `.xsd` source file in the target, emits a `.buildCommand` that runs `XMLSchemaTool`, producing `<name>.schema.json` and `<name>.schema.json.sha256` in the build output directory. Requires Swift 5.6+; plugin source lives under `Plugins/XMLSchemaPlugin/`.
+- **All five `Package@swift-*.swift` manifests updated**: added `XMLSchemaTool` executable product/target and `XMLSchemaPlugin` plugin product/target.
+- **`SCHEMA_FORMAT.md`**: comprehensive language-agnostic documentation of the JSON output format (all types, discriminated-union envelope, QName structure, occurrence bounds behaviour, versioning policy, fingerprint sidecar). Designed so that external code-generation tools written in any language can consume the output.
+- Added `XMLSchemaPhase06Tests` (12 cases): JSON round-trip (4 cases), JSON structure validation (5 cases), fingerprinting (3 cases); total test count now 124.
+
 ### Added — Phase 0.4 (Redefine, Mixed Content, Identity Constraints)
 
 - **`<xsd:redefine>` support**: `XMLSchemaRedefine` struct (`schemaLocation`, `complexTypes`, `simpleTypes`, `attributeGroups`, `modelGroups`) added to `XMLSchema`. The parser loads the referenced file and applies overrides — types/groups in the redefine block replace same-named components from the loaded schema (`applyRedefine(_:to:)`), matching the XSD 1.0 override semantics.
