@@ -27,6 +27,7 @@ public struct XMLNormalizedElementDeclaration: Sendable, Equatable {
     public let fixedValue: String?
     public let isAbstract: Bool
     public let substitutionGroup: XMLQualifiedName?
+    public let identityConstraints: [XMLSchemaIdentityConstraint]
     public let occurrenceBounds: XMLSchemaOccurrenceBounds
 
     public init(
@@ -40,6 +41,7 @@ public struct XMLNormalizedElementDeclaration: Sendable, Equatable {
         fixedValue: String?,
         isAbstract: Bool,
         substitutionGroup: XMLQualifiedName?,
+        identityConstraints: [XMLSchemaIdentityConstraint] = [],
         occurrenceBounds: XMLSchemaOccurrenceBounds
     ) {
         self.componentID = componentID
@@ -52,6 +54,7 @@ public struct XMLNormalizedElementDeclaration: Sendable, Equatable {
         self.fixedValue = fixedValue
         self.isAbstract = isAbstract
         self.substitutionGroup = substitutionGroup
+        self.identityConstraints = identityConstraints
         self.occurrenceBounds = occurrenceBounds
     }
 }
@@ -305,6 +308,7 @@ public struct XMLNormalizedComplexType: Sendable, Equatable {
     public let effectiveAttributes: [XMLNormalizedAttributeUse]
     public let anyAttribute: XMLSchemaWildcard?
     public let isAbstract: Bool
+    public let isMixed: Bool
     public let isAnonymous: Bool
 
     public var declaredSequence: [XMLNormalizedElementUse] {
@@ -366,6 +370,7 @@ public struct XMLNormalizedComplexType: Sendable, Equatable {
         effectiveAttributes: [XMLNormalizedAttributeUse],
         anyAttribute: XMLSchemaWildcard?,
         isAbstract: Bool,
+        isMixed: Bool = false,
         isAnonymous: Bool
     ) {
         self.componentID = componentID
@@ -384,6 +389,7 @@ public struct XMLNormalizedComplexType: Sendable, Equatable {
         self.effectiveAttributes = effectiveAttributes
         self.anyAttribute = anyAttribute
         self.isAbstract = isAbstract
+        self.isMixed = isMixed
         self.isAnonymous = isAnonymous
     }
 }
@@ -1002,6 +1008,7 @@ private extension XMLSchemaNormalizer {
                 simpleContentBaseQName: complexType.simpleContentBaseQName,
                 simpleContentDerivationKind: complexType.simpleContentDerivationKind,
                 isAbstract: complexType.isAbstract,
+                isMixed: complexType.isMixed,
                 sequence: [],
                 choiceGroups: [],
                 content: rewrittenContent,
@@ -1143,6 +1150,7 @@ private extension XMLSchemaNormalizer {
                         simpleContentBaseQName: rewrittenAnonymous.simpleContentBaseQName,
                         simpleContentDerivationKind: rewrittenAnonymous.simpleContentDerivationKind,
                         isAbstract: rewrittenAnonymous.isAbstract,
+                        isMixed: rewrittenAnonymous.isMixed,
                         sequence: [],
                         choiceGroups: [],
                         content: rewrittenAnonymous.content,
@@ -1164,6 +1172,7 @@ private extension XMLSchemaNormalizer {
                     fixedValue: element.fixedValue,
                     isAbstract: element.isAbstract,
                     substitutionGroup: element.substitutionGroup,
+                    identityConstraints: element.identityConstraints,
                     inlineComplexType: inlineComplexType,
                     inlineSimpleType: nil
                 )
@@ -1189,6 +1198,7 @@ private extension XMLSchemaNormalizer {
                     fixedValue: element.fixedValue,
                     isAbstract: element.isAbstract,
                     substitutionGroup: element.substitutionGroup,
+                    identityConstraints: element.identityConstraints,
                     inlineComplexType: nil,
                     inlineSimpleType: inlineSimpleType
                 )
@@ -1231,6 +1241,7 @@ private extension XMLSchemaNormalizer {
                 simpleContentBaseQName: complexType.simpleContentBaseQName,
                 simpleContentDerivationKind: complexType.simpleContentDerivationKind,
                 isAbstract: complexType.isAbstract,
+                isMixed: complexType.isMixed,
                 sequence: [],
                 choiceGroups: [],
                 content: rewrittenContent,
@@ -1337,6 +1348,7 @@ private extension XMLSchemaNormalizer {
             fixedValue: resolvedElement.fixedValue,
             isAbstract: resolvedElement.isAbstract,
             substitutionGroup: resolvedElement.substitutionGroup,
+            identityConstraints: element.identityConstraints,
             occurrenceBounds: element.occurrenceBounds
         )
     }
@@ -1453,6 +1465,7 @@ private extension XMLSchemaNormalizer {
             effectiveAttributes: resolvedDerivation.effectiveAttributes,
             anyAttribute: complexType.anyAttribute,
             isAbstract: complexType.isAbstract,
+            isMixed: complexType.isMixed,
             isAnonymous: contextPath.contains("Anonymous")
         )
     }

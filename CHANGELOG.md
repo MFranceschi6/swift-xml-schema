@@ -6,6 +6,14 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 ## [Unreleased]
 
+### Added — Phase 0.4 (Redefine, Mixed Content, Identity Constraints)
+
+- **`<xsd:redefine>` support**: `XMLSchemaRedefine` struct (`schemaLocation`, `complexTypes`, `simpleTypes`, `attributeGroups`, `modelGroups`) added to `XMLSchema`. The parser loads the referenced file and applies overrides — types/groups in the redefine block replace same-named components from the loaded schema (`applyRedefine(_:to:)`), matching the XSD 1.0 override semantics.
+- **Mixed content** (`isMixed: Bool`): added to `XMLSchemaComplexType`, `XMLSchemaAnonymousComplexType`, and `XMLNormalizedComplexType`. The parser reads `mixed="true"` from either the `complexType` element or its `complexContent` child; the normalizer threads it through `normalizeComplexType`.
+- **Identity constraints**: new `XMLSchemaIdentityConstraintKind` enum (`.key`, `.keyref`, `.unique`) and `XMLSchemaIdentityConstraint` struct (`kind`, `name`, `selector`, `fields`, `refer`). `XMLSchemaElement` gains `identityConstraints: [XMLSchemaIdentityConstraint]`; `XMLNormalizedElementDeclaration` gains the same field. The parser handles `<xsd:key>`, `<xsd:keyref>`, and `<xsd:unique>` children of element nodes via `parseIdentityConstraints(from:namespaceMappings:)`.
+- **`<xsd:notation>`**: new `XMLSchemaNotation` struct (`name`, `publicID`, `systemID`). `XMLSchema` gains `notations: [XMLSchemaNotation]`. The parser captures all `<xsd:notation>` children of schema nodes.
+- Added `XMLSchemaPhase04Tests` (13 cases): mixed content (4 cases), identity constraints (5 cases), notation (2 cases), redefine (2 cases); total test count now 112.
+
 ### Added — Phase 0.5 (Concurrency + Typed Throws, Swift 6.0)
 
 - **Typed throws on public API** (Swift 6.0+): `XMLSchemaDocumentParser.parse(data:)`, `parse(data:sourceURL:)`, and `parse(url:)` now declare `throws(XMLSchemaParsingError)`, enabling exhaustive `catch` at call sites. `XMLSchemaNormalizer.normalize(_:)` is typed identically. A shared `bridged(_:)` helper bridges the untyped-throws internal implementation into the typed public surface. On Swift ≤5.9 the `#else` branch retains untyped `throws` with identical behaviour.

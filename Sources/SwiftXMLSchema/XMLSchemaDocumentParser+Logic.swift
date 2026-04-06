@@ -69,8 +69,7 @@ extension XMLSchemaDocumentParser {
 
         let importReferences = parsedSchema.imports.compactMap { $0.schemaLocation }
         let includeReferences = parsedSchema.includes.map { $0.schemaLocation }
-        let references = importReferences + includeReferences
-        for schemaLocation in references {
+        for schemaLocation in importReferences + includeReferences {
             let schemaURL = try resourceResolver.resolve(schemaLocation: schemaLocation, relativeTo: sourceURL)
             let schemaURLKey = schemaURL.standardizedFileURL.path
             if loadedSchemaURLs.contains(schemaURLKey) {
@@ -101,6 +100,73 @@ extension XMLSchemaDocumentParser {
                 )
             }
         }
+
+        for redefine in parsedSchema.redefines {
+            let schemaURL = try resourceResolver.resolve(schemaLocation: redefine.schemaLocation, relativeTo: sourceURL)
+            let schemaURLKey = schemaURL.standardizedFileURL.path
+            if loadedSchemaURLs.contains(schemaURLKey) {
+                continue
+            }
+            loadedSchemaURLs.insert(schemaURLKey)
+
+            let importedData = try resourceResolver.loadSchemaData(from: schemaURL)
+            let importedDocument: XMLCoderDocument
+            do {
+                importedDocument = try XMLCoderDocument(data: importedData, sourceURL: schemaURL)
+            } catch {
+                throw XMLSchemaParsingError.invalidSchema(
+                    name: nil,
+                    message: "Unable to parse redefined schema '\(redefine.schemaLocation)'.",
+                    sourceLocation: XMLSchemaSourceLocation(fileURL: sourceURL)
+                )
+            }
+
+            let importedSchemaNodes = try findSchemaNodes(in: importedDocument)
+            for importedSchemaNode in importedSchemaNodes {
+                var tempSchemas: [XMLSchema] = []
+                try appendSchemaRecursively(
+                    schemaNode: importedSchemaNode,
+                    sourceURL: schemaURL,
+                    fallbackNamespaceMappings: namespaceMappings,
+                    loadedSchemaURLs: &loadedSchemaURLs,
+                    schemas: &tempSchemas
+                )
+                for loadedSchema in tempSchemas {
+                    schemas.append(applyRedefine(redefine, to: loadedSchema))
+                }
+            }
+        }
+    }
+
+    private func applyRedefine(_ redefine: XMLSchemaRedefine, to schema: XMLSchema) -> XMLSchema {
+        let redefinedComplexTypeNames = Set(redefine.complexTypes.map(\.name))
+        let redefinedSimpleTypeNames = Set(redefine.simpleTypes.map(\.name))
+        let redefinedAttributeGroupNames = Set(redefine.attributeGroups.map(\.name))
+        let redefinedModelGroupNames = Set(redefine.modelGroups.map(\.name))
+
+        let patchedComplexTypes = schema.complexTypes.filter { !redefinedComplexTypeNames.contains($0.name) }
+            + redefine.complexTypes
+        let patchedSimpleTypes = schema.simpleTypes.filter { !redefinedSimpleTypeNames.contains($0.name) }
+            + redefine.simpleTypes
+        let patchedAttributeGroups = schema.attributeGroups.filter { !redefinedAttributeGroupNames.contains($0.name) }
+            + redefine.attributeGroups
+        let patchedModelGroups = schema.modelGroups.filter { !redefinedModelGroupNames.contains($0.name) }
+            + redefine.modelGroups
+
+        return XMLSchema(
+            annotation: schema.annotation,
+            targetNamespace: schema.targetNamespace,
+            imports: schema.imports,
+            includes: schema.includes,
+            redefines: schema.redefines,
+            notations: schema.notations,
+            elements: schema.elements,
+            attributeDefinitions: schema.attributeDefinitions,
+            attributeGroups: patchedAttributeGroups,
+            modelGroups: patchedModelGroups,
+            complexTypes: patchedComplexTypes,
+            simpleTypes: patchedSimpleTypes
+        )
     }
 
     private func findSchemaNodes(in document: XMLCoderDocument) throws -> [XMLCoderNode] {
@@ -138,6 +204,46 @@ extension XMLSchemaDocumentParser {
                 return XMLSchemaInclude(schemaLocation: schemaLocation)
             }
 
+        let redefines = try schemaNode.children()
+            .filter { $0.name == "redefine" }
+            .compactMap { redefineNode -> XMLSchemaRedefine? in
+                guard let schemaLocation = normalized(redefineNode.attribute(named: "schemaLocation")) else {
+                    return nil
+                }
+                let redefinedComplexTypes = try redefineNode.children()
+                    .filter { $0.name == "complexType" }
+                    .map { try parseComplexType($0, sourceURL: sourceURL, namespaceMappings: namespaceMappings) }
+                let redefinedSimpleTypes = try redefineNode.children()
+                    .filter { $0.name == "simpleType" }
+                    .map { try parseSimpleType($0, sourceURL: sourceURL, namespaceMappings: namespaceMappings) }
+                let redefinedAttributeGroups = try redefineNode.children()
+                    .filter { $0.name == "attributeGroup" && normalized($0.attribute(named: "name")) != nil }
+                    .map { try parseAttributeGroup($0, sourceURL: sourceURL, namespaceMappings: namespaceMappings) }
+                let redefinedModelGroups = try redefineNode.children()
+                    .filter { $0.name == "group" && normalized($0.attribute(named: "name")) != nil }
+                    .map { try parseModelGroup($0, sourceURL: sourceURL, namespaceMappings: namespaceMappings) }
+                return XMLSchemaRedefine(
+                    schemaLocation: schemaLocation,
+                    complexTypes: redefinedComplexTypes,
+                    simpleTypes: redefinedSimpleTypes,
+                    attributeGroups: redefinedAttributeGroups,
+                    modelGroups: redefinedModelGroups
+                )
+            }
+
+        let notations = schemaNode.children()
+            .filter { $0.name == "notation" }
+            .compactMap { notationNode -> XMLSchemaNotation? in
+                guard let name = normalized(notationNode.attribute(named: "name")) else {
+                    return nil
+                }
+                return XMLSchemaNotation(
+                    name: name,
+                    publicID: normalized(notationNode.attribute(named: "public")),
+                    systemID: normalized(notationNode.attribute(named: "system"))
+                )
+            }
+
         let elements = try schemaNode.children()
             .filter { $0.name == "element" }
             .map { try parseSchemaElement($0, sourceURL: sourceURL, namespaceMappings: namespaceMappings) }
@@ -170,6 +276,8 @@ extension XMLSchemaDocumentParser {
             targetNamespace: targetNamespace,
             imports: imports,
             includes: includes,
+            redefines: redefines,
+            notations: notations,
             elements: elements,
             attributeDefinitions: attributeDefinitions,
             attributeGroups: attributeGroups,
@@ -219,6 +327,10 @@ extension XMLSchemaDocumentParser {
         let inlineSimpleType = try elementNode.children()
             .first(where: { $0.name == "simpleType" })
             .map { try parseAnonymousSimpleType($0, namespaceMappings: namespaceMappings) }
+        let identityConstraints = try parseIdentityConstraints(
+            from: elementNode.children(),
+            namespaceMappings: namespaceMappings
+        )
 
         return XMLSchemaElement(
             annotation: annotation,
@@ -232,9 +344,45 @@ extension XMLSchemaDocumentParser {
             fixedValue: fixedValue,
             isAbstract: isAbstract,
             substitutionGroup: substitutionGroup,
+            identityConstraints: identityConstraints,
             inlineComplexType: inlineComplexType,
             inlineSimpleType: inlineSimpleType
         )
+    }
+
+    private func parseIdentityConstraints(
+        from nodes: [XMLCoderNode],
+        namespaceMappings: [String: String]
+    ) throws -> [XMLSchemaIdentityConstraint] {
+        var result: [XMLSchemaIdentityConstraint] = []
+        for node in nodes {
+            let kind: XMLSchemaIdentityConstraintKind
+            switch node.name {
+            case "key": kind = .key
+            case "keyref": kind = .keyref
+            case "unique": kind = .unique
+            default: continue
+            }
+            guard let name = normalized(node.attribute(named: "name")) else { continue }
+            let selector = node.children().first(where: { $0.name == "selector" })
+                .flatMap { normalized($0.attribute(named: "xpath")) } ?? ""
+            let fields = node.children()
+                .filter { $0.name == "field" }
+                .compactMap { normalized($0.attribute(named: "xpath")) }
+            let refer = try resolveQName(
+                fromQualifiedName: node.attribute(named: "refer"),
+                namespaceMappings: namespaceMappings,
+                context: "keyref refer"
+            )
+            result.append(XMLSchemaIdentityConstraint(
+                kind: kind,
+                name: name,
+                selector: selector,
+                fields: fields,
+                refer: refer
+            ))
+        }
+        return result
     }
 
     private func parseComplexType(_ complexTypeNode: XMLCoderNode, sourceURL: URL?, namespaceMappings: [String: String]) throws -> XMLSchemaComplexType {
@@ -298,6 +446,9 @@ extension XMLSchemaDocumentParser {
                 simpleDerivedChildren.filter { $0.name == "anyAttribute" }
         )
 
+        let isMixed = parseBooleanAttribute(named: "mixed", on: complexTypeNode)
+            || (complexContentNode.map { parseBooleanAttribute(named: "mixed", on: $0) } ?? false)
+
         return XMLSchemaComplexType(
             annotation: annotation,
             name: name,
@@ -306,6 +457,7 @@ extension XMLSchemaDocumentParser {
             simpleContentBaseQName: simpleContentBaseQName,
             simpleContentDerivationKind: simpleDerivedNode.flatMap(parseContentDerivationKind),
             isAbstract: parseBooleanAttribute(named: "abstract", on: complexTypeNode),
+            isMixed: isMixed,
             sequence: [],
             choiceGroups: [],
             content: content,
@@ -362,6 +514,9 @@ extension XMLSchemaDocumentParser {
                 simpleDerivedChildren.filter { $0.name == "anyAttribute" }
         )
 
+        let isMixed = parseBooleanAttribute(named: "mixed", on: complexTypeNode)
+            || (complexContentNode.map { parseBooleanAttribute(named: "mixed", on: $0) } ?? false)
+
         return XMLSchemaAnonymousComplexType(
             annotation: annotation,
             baseQName: try resolveQName(
@@ -377,6 +532,7 @@ extension XMLSchemaDocumentParser {
             ),
             simpleContentDerivationKind: simpleDerivedNode.flatMap(parseContentDerivationKind),
             isAbstract: parseBooleanAttribute(named: "abstract", on: complexTypeNode),
+            isMixed: isMixed,
             sequence: [],
             choiceGroups: [],
             content: content,
