@@ -1,17 +1,22 @@
 import Foundation
 import SwiftXMLSchema
 
+// MARK: - stderr helper (avoids C global `stderr` which is mutable on Linux)
+
+private func printStderr(_ message: String) {
+    FileHandle.standardError.write(Data((message + "\n").utf8))
+}
+
 // MARK: - Argument parsing
 
 let arguments = CommandLine.arguments
 guard arguments.count >= 3 else {
-    fputs("""
+    printStderr("""
     Usage: XMLSchemaTool <input.xsd> <output.json>
 
     Parses an XSD schema file and writes the normalised schema model as JSON.
     A <output.json>.sha256 file containing the schema fingerprint is also written.
-
-    """, stderr)
+    """)
     exit(1)
 }
 
@@ -38,9 +43,9 @@ do {
     try fingerprintData.write(to: fingerprintURL)
     #endif
 } catch let error as XMLSchemaParsingError {
-    fputs("Error: \(error)\n", stderr)
+    printStderr("Error: \(error)")
     exit(1)
 } catch {
-    fputs("Error: \(error)\n", stderr)
+    printStderr("Error: \(error)")
     exit(1)
 }

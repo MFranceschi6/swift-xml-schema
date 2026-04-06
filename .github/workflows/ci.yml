@@ -72,6 +72,7 @@ jobs:
               cp -a /workspace/Package*.swift /tmp/swift-lane-workspace/
               cp -a /workspace/Sources /tmp/swift-lane-workspace/
               cp -a /workspace/Tests /tmp/swift-lane-workspace/
+              cp -a /workspace/Plugins /tmp/swift-lane-workspace/
               cd /tmp/swift-lane-workspace
               swift --version
               swift build -c debug
