@@ -6,6 +6,18 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 ## [Unreleased]
 
+### Added — Phase 0.8 (JSON Schema Export)
+
+- **`XMLJSONSchemaExporter`**: converts an `XMLNormalizedSchemaSet` to a `XMLJSONSchemaDocument` conforming to JSON Schema draft 2020-12. Reads `effectiveContent` and `effectiveAttributes` exclusively (matching the SCHEMA_FORMAT.md recommendation).
+- **`XMLJSONSchemaDocument`** and **`JSONSchemaNode`** output model: fully `Encodable`; pass directly to `JSONEncoder` to produce a ready-to-use JSON Schema file.
+- **XSD → JSON Schema mapping**: named `complexType` → `$defs` object with `type:"object"`, `properties`, and `required`; named `simpleType` with enumerations → `enum:[...]`; `list` derivation → `type:"array"`; `union` derivation → `anyOf`; type hierarchy extension → `allOf[$ref, ...]`; simple-content types → base type node merged with attribute object; wildcards/`anyAttribute` → `additionalProperties: true`.
+- **XSD built-in type mapping**: `xsd:string`/`token`/`anyURI`/`ID`/`IDREF`/… → `string`; integer family → `integer`; `decimal`/`float`/`double` → `number`; `boolean` → `boolean`; `date`/`dateTime`/`time`/`duration` → `string` with `format`; `base64Binary` → `string` with `format:"byte"`.
+- **Facet propagation**: `minLength`, `maxLength`, `length`, `pattern`, `minInclusive`, `maxInclusive`, `minExclusive`, `maxExclusive`, `enumeration` from `XMLSchemaFacetSet` are mapped to the corresponding JSON Schema keywords.
+- **Occurrence bounds**: `maxOccurs > 1` or unbounded wraps the property node in `type:"array"` with `minItems`/`maxItems`; `minOccurs == 0` omits the field from `required`.
+- **Top-level elements** become entries in the root `properties` object (root is `type:"object"`).
+- **Custom title**: `XMLJSONSchemaExporter.export(_:title:)` accepts an optional title override; defaults to the first schema's `targetNamespace`.
+- Added `XMLSchemaPhase08Tests` (20 cases); total test count now 144.
+
 ### Added — Phase 0.6 (Build Tool Plugin and Schema Caching)
 
 - **`Codable` on all normalised types**: `XMLNormalizedSchemaSet`, `XMLNormalizedSchema`, `XMLNormalizedComplexType`, `XMLNormalizedSimpleType`, `XMLNormalizedElementDeclaration`, `XMLNormalizedAttributeUse`, `XMLNormalizedAttributeDefinition`, `XMLNormalizedAttributeGroup`, `XMLNormalizedModelGroup`, `XMLNormalizedContentNode`, `XMLSchemaOccurrenceBounds`, `XMLSchemaWildcard`, `XMLSchemaAnnotation`, `XMLSchemaComponentID`, `XMLSchemaIdentityConstraint`, `XMLSchemaFacetSet` — all conform to `Codable`. `XMLNormalizedContentNode` uses a custom `{"kind":"element|choice|wildcard","value":{...}}` discriminated-union envelope to avoid field-name collisions with `XMLSchemaWildcard`'s own `kind` field.
