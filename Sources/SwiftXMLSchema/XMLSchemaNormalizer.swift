@@ -10,13 +10,13 @@ public struct XMLSchemaComponentID: Sendable, Equatable, Hashable, Codable {
     }
 }
 
-public enum XMLNormalizedContentNode: Sendable, Equatable {
+public enum XMLNormalizedContentNode: Sendable, Equatable, Codable {
     case element(XMLNormalizedElementUse)
     case choice(XMLNormalizedChoiceGroup)
     case wildcard(XMLSchemaWildcard)
 }
 
-public struct XMLNormalizedElementDeclaration: Sendable, Equatable {
+public struct XMLNormalizedElementDeclaration: Sendable, Equatable, Codable {
     public let componentID: XMLSchemaComponentID
     public let annotation: XMLSchemaAnnotation?
     public let name: String
@@ -59,7 +59,7 @@ public struct XMLNormalizedElementDeclaration: Sendable, Equatable {
     }
 }
 
-public struct XMLNormalizedElementUse: Sendable, Equatable {
+public struct XMLNormalizedElementUse: Sendable, Equatable, Codable {
     public let componentID: XMLSchemaComponentID
     public let annotation: XMLSchemaAnnotation?
     public let name: String
@@ -99,7 +99,7 @@ public struct XMLNormalizedElementUse: Sendable, Equatable {
     }
 }
 
-public struct XMLNormalizedChoiceGroup: Sendable, Equatable {
+public struct XMLNormalizedChoiceGroup: Sendable, Equatable, Codable {
     public let content: [XMLNormalizedContentNode]
     public let occurrenceBounds: XMLSchemaOccurrenceBounds
 
@@ -130,7 +130,7 @@ public struct XMLNormalizedChoiceGroup: Sendable, Equatable {
     }
 }
 
-public struct XMLNormalizedAttributeDefinition: Sendable, Equatable {
+public struct XMLNormalizedAttributeDefinition: Sendable, Equatable, Codable {
     public let componentID: XMLSchemaComponentID
     public let annotation: XMLSchemaAnnotation?
     public let name: String
@@ -161,7 +161,7 @@ public struct XMLNormalizedAttributeDefinition: Sendable, Equatable {
     }
 }
 
-public struct XMLNormalizedAttributeUse: Sendable, Equatable {
+public struct XMLNormalizedAttributeUse: Sendable, Equatable, Codable {
     public let componentID: XMLSchemaComponentID
     public let annotation: XMLSchemaAnnotation?
     public let name: String
@@ -192,7 +192,7 @@ public struct XMLNormalizedAttributeUse: Sendable, Equatable {
     }
 }
 
-public struct XMLNormalizedAttributeGroup: Sendable, Equatable {
+public struct XMLNormalizedAttributeGroup: Sendable, Equatable, Codable {
     public let componentID: XMLSchemaComponentID
     public let name: String
     public let namespaceURI: String?
@@ -211,7 +211,7 @@ public struct XMLNormalizedAttributeGroup: Sendable, Equatable {
     }
 }
 
-public struct XMLNormalizedModelGroup: Sendable, Equatable {
+public struct XMLNormalizedModelGroup: Sendable, Equatable, Codable {
     public let componentID: XMLSchemaComponentID
     public let name: String
     public let namespaceURI: String?
@@ -251,7 +251,7 @@ public struct XMLNormalizedModelGroup: Sendable, Equatable {
     }
 }
 
-public struct XMLNormalizedSimpleType: Sendable, Equatable {
+public struct XMLNormalizedSimpleType: Sendable, Equatable, Codable {
     public let componentID: XMLSchemaComponentID
     public let annotation: XMLSchemaAnnotation?
     public let name: String
@@ -291,7 +291,7 @@ public struct XMLNormalizedSimpleType: Sendable, Equatable {
     }
 }
 
-public struct XMLNormalizedComplexType: Sendable, Equatable {
+public struct XMLNormalizedComplexType: Sendable, Equatable, Codable {
     public let componentID: XMLSchemaComponentID
     public let annotation: XMLSchemaAnnotation?
     public let name: String
@@ -394,7 +394,7 @@ public struct XMLNormalizedComplexType: Sendable, Equatable {
     }
 }
 
-public struct XMLNormalizedSchema: Sendable, Equatable {
+public struct XMLNormalizedSchema: Sendable, Equatable, Codable {
     public let annotation: XMLSchemaAnnotation?
     public let targetNamespace: String?
     public let elements: [XMLNormalizedElementDeclaration]
@@ -429,7 +429,7 @@ public struct XMLNormalizedSchema: Sendable, Equatable {
 
 /// Holds the result of ``XMLSchemaSourceLocation`` after normalisation and stores pre-computed
 /// indices so that every lookup is O(1) rather than O(n × m).
-public struct XMLNormalizedSchemaSet: Sendable, Equatable {
+public struct XMLNormalizedSchemaSet: Sendable, Equatable, Codable {
     public let schemas: [XMLNormalizedSchema]
 
     // Namespace-qualified key  → component

@@ -636,7 +636,7 @@ public struct XMLSchemaModelGroup: Sendable, Equatable {
     }
 }
 
-public struct XMLSchemaFacetSet: Sendable, Equatable {
+public struct XMLSchemaFacetSet: Sendable, Equatable, Codable {
     public let enumeration: [String]
     public let pattern: String?
     public let minLength: Int?
