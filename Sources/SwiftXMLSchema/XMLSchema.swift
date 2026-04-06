@@ -34,6 +34,68 @@ public struct XMLSchemaOccurrenceBounds: Sendable, Equatable, Codable {
     }
 }
 
+public struct XMLSchemaNotation: Sendable, Equatable, Codable {
+    public let name: String
+    public let publicID: String?
+    public let systemID: String?
+
+    public init(name: String, publicID: String? = nil, systemID: String? = nil) {
+        self.name = name
+        self.publicID = publicID
+        self.systemID = systemID
+    }
+}
+
+public enum XMLSchemaIdentityConstraintKind: String, Sendable, Equatable, Codable {
+    case key
+    case keyref
+    case unique
+}
+
+public struct XMLSchemaIdentityConstraint: Sendable, Equatable, Codable {
+    public let kind: XMLSchemaIdentityConstraintKind
+    public let name: String
+    public let selector: String
+    public let fields: [String]
+    public let refer: XMLQualifiedName?
+
+    public init(
+        kind: XMLSchemaIdentityConstraintKind,
+        name: String,
+        selector: String,
+        fields: [String],
+        refer: XMLQualifiedName? = nil
+    ) {
+        self.kind = kind
+        self.name = name
+        self.selector = selector
+        self.fields = fields
+        self.refer = refer
+    }
+}
+
+public struct XMLSchemaRedefine: Sendable, Equatable {
+    public let schemaLocation: String
+    public let complexTypes: [XMLSchemaComplexType]
+    public let simpleTypes: [XMLSchemaSimpleType]
+    public let attributeGroups: [XMLSchemaAttributeGroup]
+    public let modelGroups: [XMLSchemaModelGroup]
+
+    public init(
+        schemaLocation: String,
+        complexTypes: [XMLSchemaComplexType] = [],
+        simpleTypes: [XMLSchemaSimpleType] = [],
+        attributeGroups: [XMLSchemaAttributeGroup] = [],
+        modelGroups: [XMLSchemaModelGroup] = []
+    ) {
+        self.schemaLocation = schemaLocation
+        self.complexTypes = complexTypes
+        self.simpleTypes = simpleTypes
+        self.attributeGroups = attributeGroups
+        self.modelGroups = modelGroups
+    }
+}
+
 public struct XMLSchemaAnnotation: Sendable, Equatable, Codable {
     public let documentation: [String]
     public let appinfo: [String]
@@ -154,6 +216,7 @@ public struct XMLSchemaAnonymousComplexType: Sendable, Equatable {
     public let simpleContentBaseQName: XMLQualifiedName?
     public let simpleContentDerivationKind: XMLSchemaContentDerivationKind?
     public let isAbstract: Bool
+    public let isMixed: Bool
     public let content: [XMLSchemaContentNode]
     public let attributes: [XMLSchemaAttribute]
     public let attributeRefs: [XMLSchemaAttributeReference]
@@ -195,6 +258,7 @@ public struct XMLSchemaAnonymousComplexType: Sendable, Equatable {
         simpleContentBaseQName: XMLQualifiedName? = nil,
         simpleContentDerivationKind: XMLSchemaContentDerivationKind? = nil,
         isAbstract: Bool = false,
+        isMixed: Bool = false,
         sequence: [XMLSchemaElement] = [],
         choiceGroups: [XMLSchemaChoiceGroup] = [],
         groupReferences: [XMLSchemaGroupReference] = [],
@@ -211,6 +275,7 @@ public struct XMLSchemaAnonymousComplexType: Sendable, Equatable {
         self.simpleContentBaseQName = simpleContentBaseQName
         self.simpleContentDerivationKind = simpleContentDerivationKind
         self.isAbstract = isAbstract
+        self.isMixed = isMixed
         self.content = content ?? XMLSchemaAnonymousComplexType.makeContent(
             sequence: sequence,
             choiceGroups: choiceGroups,
@@ -241,6 +306,8 @@ public struct XMLSchema: Sendable, Equatable {
     public let targetNamespace: String?
     public let imports: [XMLSchemaImport]
     public let includes: [XMLSchemaInclude]
+    public let redefines: [XMLSchemaRedefine]
+    public let notations: [XMLSchemaNotation]
     public let elements: [XMLSchemaElement]
     public let attributeDefinitions: [XMLSchemaAttribute]
     public let attributeGroups: [XMLSchemaAttributeGroup]
@@ -253,6 +320,8 @@ public struct XMLSchema: Sendable, Equatable {
         targetNamespace: String?,
         imports: [XMLSchemaImport],
         includes: [XMLSchemaInclude],
+        redefines: [XMLSchemaRedefine] = [],
+        notations: [XMLSchemaNotation] = [],
         elements: [XMLSchemaElement],
         attributeDefinitions: [XMLSchemaAttribute] = [],
         attributeGroups: [XMLSchemaAttributeGroup] = [],
@@ -264,6 +333,8 @@ public struct XMLSchema: Sendable, Equatable {
         self.targetNamespace = targetNamespace
         self.imports = imports
         self.includes = includes
+        self.redefines = redefines
+        self.notations = notations
         self.elements = elements
         self.attributeDefinitions = attributeDefinitions
         self.attributeGroups = attributeGroups
@@ -303,6 +374,7 @@ public struct XMLSchemaElement: Sendable, Equatable {
     public let fixedValue: String?
     public let isAbstract: Bool
     public let substitutionGroup: XMLQualifiedName?
+    public let identityConstraints: [XMLSchemaIdentityConstraint]
     public let inlineComplexType: XMLSchemaAnonymousComplexType?
     public let inlineSimpleType: XMLSchemaAnonymousSimpleType?
 
@@ -326,6 +398,7 @@ public struct XMLSchemaElement: Sendable, Equatable {
         fixedValue: String? = nil,
         isAbstract: Bool = false,
         substitutionGroup: XMLQualifiedName? = nil,
+        identityConstraints: [XMLSchemaIdentityConstraint] = [],
         inlineSequenceElements: [XMLSchemaElement] = [],
         inlineComplexType: XMLSchemaAnonymousComplexType? = nil,
         inlineSimpleType: XMLSchemaAnonymousSimpleType? = nil
@@ -341,6 +414,7 @@ public struct XMLSchemaElement: Sendable, Equatable {
         self.fixedValue = fixedValue
         self.isAbstract = isAbstract
         self.substitutionGroup = substitutionGroup
+        self.identityConstraints = identityConstraints
         if let inlineComplexType = inlineComplexType {
             self.inlineComplexType = inlineComplexType
         } else if !inlineSequenceElements.isEmpty {
@@ -363,6 +437,7 @@ public struct XMLSchemaComplexType: Sendable, Equatable {
     public let simpleContentBaseQName: XMLQualifiedName?
     public let simpleContentDerivationKind: XMLSchemaContentDerivationKind?
     public let isAbstract: Bool
+    public let isMixed: Bool
     public let content: [XMLSchemaContentNode]
     public let attributes: [XMLSchemaAttribute]
     public let attributeRefs: [XMLSchemaAttributeReference]
@@ -409,6 +484,7 @@ public struct XMLSchemaComplexType: Sendable, Equatable {
         simpleContentBaseQName: XMLQualifiedName? = nil,
         simpleContentDerivationKind: XMLSchemaContentDerivationKind? = nil,
         isAbstract: Bool = false,
+        isMixed: Bool = false,
         sequence: [XMLSchemaElement],
         choice: [XMLSchemaElement] = [],
         choiceGroups: [XMLSchemaChoiceGroup]? = nil,
@@ -427,6 +503,7 @@ public struct XMLSchemaComplexType: Sendable, Equatable {
         self.simpleContentBaseQName = simpleContentBaseQName
         self.simpleContentDerivationKind = simpleContentDerivationKind
         self.isAbstract = isAbstract
+        self.isMixed = isMixed
         let resolvedChoiceGroups = choiceGroups ?? (choice.isEmpty ? [] : [XMLSchemaChoiceGroup(elements: choice)])
         self.content = content ?? XMLSchemaComplexType.makeContent(
             sequence: sequence,
