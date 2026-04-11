@@ -36,8 +36,6 @@ extension XMLSchemaSourceLocation: CustomStringConvertible {
 /// A non-fatal diagnostic emitted during parsing or normalisation.
 ///
 /// Fatal errors are still surfaced as thrown ``XMLSchemaParsingError`` values.
-/// Use ``XMLSchemaParsingResult`` to collect non-fatal diagnostics alongside a
-/// successfully parsed value.
 public struct XMLSchemaParsingDiagnostic: Sendable {
     /// The severity of the diagnostic.
     public enum Severity: Sendable, Equatable {

@@ -217,8 +217,6 @@ public struct XMLJSONSchemaExporter: Sendable {
                 }
             case .wildcard:
                 break // handled via additionalProperties below
-            case .choice:
-                break // already handled above
             }
         }
 

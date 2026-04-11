@@ -1,3 +1,4 @@
+import Foundation
 import PackagePlugin
 
 /// Build tool plugin that generates a normalised schema model JSON for each
@@ -23,6 +24,24 @@ struct XMLSchemaPlugin: BuildToolPlugin {
         let tool = try context.tool(named: "XMLSchemaTool")
 
         return sourceTarget.sourceFiles(withSuffix: ".xsd").map { xsdFile in
+            #if compiler(>=6.0)
+            let xsdURL = xsdFile.url
+            let stem = xsdURL.deletingPathExtension().lastPathComponent
+            let workDir = context.pluginWorkDirectoryURL
+            let outputJSON = workDir.appending(path: "\(stem).schema.json")
+            let fingerprintFile = workDir.appending(path: "\(stem).schema.json.sha256")
+
+            return .buildCommand(
+                displayName: "Generating schema JSON for \(xsdURL.lastPathComponent)",
+                executable: tool.url,
+                arguments: [
+                    xsdURL.path,
+                    outputJSON.path
+                ],
+                inputFiles: [xsdURL],
+                outputFiles: [outputJSON, fingerprintFile]
+            )
+            #else
             let stem = xsdFile.path.stem
             let outputJSON = context.pluginWorkDirectory.appending("\(stem).schema.json")
             let fingerprintFile = context.pluginWorkDirectory.appending("\(stem).schema.json.sha256")
@@ -37,6 +56,7 @@ struct XMLSchemaPlugin: BuildToolPlugin {
                 inputFiles: [xsdFile.path],
                 outputFiles: [outputJSON, fingerprintFile]
             )
+            #endif
         }
     }
 }

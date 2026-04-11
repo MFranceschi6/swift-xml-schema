@@ -6,6 +6,35 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 ## [Unreleased]
 
+### Changed — Phase 1.0 Release Prep
+
+- **`XMLSchemaPlugin` migrated to URL-based `PackagePlugin` API** under `#if compiler(>=6.0)`, with the legacy `Path`-based path retained for older toolchains. Eliminates 12 deprecation warnings on Swift 6.0+.
+- **`XMLJSONSchemaExporter`**: removed unreachable `case .choice` branch in `objectNode(for:)` (already handled earlier in the same `switch`); silences a Swift compiler warning.
+- **README refreshed** for 1.0: feature inventory (parsing, normalisation, walker, diff, statistics, JSON Schema export, build plugin, resource resolution, diagnostics), Swift 5.4 runtime support, installation snippet, and DocC generation instructions.
+- **Doc-comment hygiene**: removed dead symbol link to internal `XMLSchemaParsingResult` from `XMLSchemaParsingDiagnostic`; downgraded ambiguous DocC link `loadSchemaData(from:)` on `RemoteXMLSchemaResourceResolver` to plain code formatting. DocC now builds without warnings.
+
+### Added — Phase 1.0 DocC Documentation
+
+- **`SwiftXMLSchema.docc` catalog** (new): DocC documentation catalog under `Sources/SwiftXMLSchema/`. Picked up automatically by the `swift-docc-plugin` dependency already declared in `Package@swift-5.9.swift` and later manifests.
+- **Landing page** (`SwiftXMLSchema.md`): module overview, pipeline diagram table, and topic groups linking every public type and article.
+- **Article: Getting Started** — parsing from `Data` and file URL, normalisation, typed throws (Swift 6.0), async parsing (Swift 5.5+).
+- **Article: Working with the Component Model** — O(1) lookups, `XMLQualifiedName` overloads, flat cross-schema iterators, `effectiveContent` vs `declaredContent`, inheritance navigation (`baseComplexType(of:)`, `derivedComplexTypes(of:)`), substitution groups, schema statistics summary.
+- **Article: Visitor and Walker** — `XMLSchemaVisitor` protocol, `XMLSchemaWalker` depth-first pass, `inout` accumulation pattern, `walkComponents(collecting:)` for non-`Void` results, class-based visitor example, code-generation pattern.
+- **Article: Build Plugin** — SPM setup, `XMLSchemaPlugin` build command, `XMLSchemaTool` standalone CLI, loading the generated JSON at runtime, fingerprint verification in CI.
+- **Article: JSON Schema Export** — `XMLJSONSchemaExporter`, complex-type mapping, simple-type enumerations, list/union derivation, type-inheritance `allOf` composition, XSD-to-JSON built-in type table, facet propagation table, wildcard handling.
+- **Article: Schema Diff and Statistics** — `XMLSchemaDiffer` usage, breaking/non-breaking change table, filtered views, `XMLSchemaStatistics` counters, inheritance-depth metrics, per-namespace breakdown, unreferenced type detection, CI usage pattern.
+
+### Added — Phase 1.0 Schema Statistics
+
+- **`XMLSchemaStatistics`** (new): aggregate statistics for an `XMLNormalizedSchemaSet`. Fields:
+  - **Total counts**: `totalComplexTypes`, `totalSimpleTypes`, `totalElements`, `totalAttributeDefinitions`, `totalAttributeGroups`, `totalModelGroups` (anonymous complex types are excluded from `totalComplexTypes`).
+  - **Inheritance depth**: `maxComplexTypeInheritanceDepth` and `maxSimpleTypeInheritanceDepth` — maximum number of in-schema-set ancestors in any type's derivation chain (root = 0, one derived level = 1, etc.). Cycles are guarded.
+  - **Namespace breakdown**: `namespaceBreakdown: [XMLSchemaNamespaceBreakdown]` — per-`targetNamespace` component counts (including `nil` for no-namespace schemas), sorted by namespace URI.
+  - **Unreferenced types**: `unreferencedComplexTypeNames` and `unreferencedSimpleTypeNames` — sorted qualified-name strings of named types that are not referenced as a `typeQName`, base type, list-item type, or union-member type anywhere in the schema set. Useful for tooling diagnostics and dead-type detection.
+- **`XMLSchemaNamespaceBreakdown`** (new): `Sendable, Equatable, Codable` struct with `namespace`, `complexTypeCount`, `simpleTypeCount`, `elementCount`, `attributeDefinitionCount`, `attributeGroupCount`, `modelGroupCount`.
+- **`XMLNormalizedSchemaSet.statistics`** (new): computed property that runs the O(n) analysis and returns an `XMLSchemaStatistics` value.
+- Added `XMLSchemaPhase10StatisticsTests` (14 cases); total test count now 176.
+
 ### Changed — Phase 1.0 API Cleanup
 
 - **`XMLSchemaAttributeUseKind` enum** (new): replaces `use: String?` on `XMLSchemaAttribute`, `XMLSchemaAttributeReference`, `XMLNormalizedAttributeUse`, and `XMLNormalizedAttributeDefinition`. Valid cases: `.required`, `.optional`, `.prohibited`. The parser maps the XSD `use` attribute value to the enum; unknown values are silently dropped to `nil`.
