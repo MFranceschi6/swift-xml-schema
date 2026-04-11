@@ -217,15 +217,13 @@ public struct XMLJSONSchemaExporter: Sendable {
                 }
             case .wildcard:
                 break // handled via additionalProperties below
-            case .choice:
-                break // already handled above
             }
         }
 
         for attr in complexType.effectiveAttributes {
             let attrNode = attributeNode(for: attr)
             properties[attr.name] = attrNode
-            if attr.use == "required" {
+            if attr.use == .required {
                 required.append(attr.name)
             }
         }

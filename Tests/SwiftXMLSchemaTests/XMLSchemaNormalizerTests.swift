@@ -46,11 +46,11 @@ final class XMLSchemaNormalizerTests: XCTestCase {
 
         XCTAssertEqual(order.effectiveSequence.map(\.name), ["id"])
         XCTAssertEqual(order.effectiveChoiceGroups.first?.elements.map(\.name), ["couponCode", "voucherCode"])
-        XCTAssertEqual(order.effectiveAnyElements.first?.processContents, "lax")
+        XCTAssertEqual(order.effectiveAnyElements.first?.processContents, .lax)
         XCTAssertEqual(order.effectiveAttributes.map(\.name).sorted(), ["locale", "source"])
         XCTAssertEqual(
             Dictionary(uniqueKeysWithValues: order.effectiveAttributes.map { ($0.name, $0.use) })["source"],
-            "required"
+            .required
         )
         XCTAssertEqual(extendedMetadata.attributes.map(\.name).sorted(), ["locale", "source"])
         XCTAssertEqual(normalized.rootElementBinding(forTypeNamed: "Order", namespaceURI: "urn:test")?.name, "order")
@@ -229,7 +229,7 @@ final class XMLSchemaNormalizerTests: XCTestCase {
         )
         XCTAssertEqual(
             Dictionary(uniqueKeysWithValues: restrictedOrder.effectiveAttributes.map { ($0.name, $0.use) })["status"],
-            "required"
+            .required
         )
         XCTAssertEqual(
             Dictionary(uniqueKeysWithValues: restrictedOrder.effectiveAttributes.map { ($0.name, $0.defaultValue) })["shared"],

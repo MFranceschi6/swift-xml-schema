@@ -126,17 +126,37 @@ public enum XMLSchemaWildcardKind: String, Sendable, Equatable, Codable {
     case attribute
 }
 
+/// How an XML wildcard (`xsd:any` / `xsd:anyAttribute`) handles unrecognised content.
+public enum XMLSchemaWildcardProcessContents: String, Sendable, Equatable, Codable {
+    /// Validate against the schema if available; error if no schema is found. Default.
+    case strict
+    /// Validate against the schema if available; ignore if no schema is found.
+    case lax
+    /// Do not validate.
+    case skip
+}
+
+/// How an attribute may appear on an element.
+public enum XMLSchemaAttributeUseKind: String, Sendable, Equatable, Codable {
+    /// The attribute must appear.
+    case required
+    /// The attribute may appear. Default when no `use` is specified.
+    case optional
+    /// The attribute must not appear (restriction only).
+    case prohibited
+}
+
 public struct XMLSchemaWildcard: Sendable, Equatable, Codable {
     public let kind: XMLSchemaWildcardKind
     public let namespaceConstraint: String?
-    public let processContents: String?
+    public let processContents: XMLSchemaWildcardProcessContents?
     public let minOccurs: Int?
     public let maxOccurs: String?
 
     public init(
         kind: XMLSchemaWildcardKind,
         namespaceConstraint: String? = nil,
-        processContents: String? = nil,
+        processContents: XMLSchemaWildcardProcessContents? = nil,
         minOccurs: Int? = nil,
         maxOccurs: String? = nil
     ) {
@@ -724,7 +744,7 @@ public struct XMLSchemaAttribute: Sendable, Equatable {
     public let annotation: XMLSchemaAnnotation?
     public let name: String
     public let typeQName: XMLQualifiedName?
-    public let use: String?
+    public let use: XMLSchemaAttributeUseKind?
     public let defaultValue: String?
     public let fixedValue: String?
     public let inlineSimpleType: XMLSchemaAnonymousSimpleType?
@@ -733,7 +753,7 @@ public struct XMLSchemaAttribute: Sendable, Equatable {
         annotation: XMLSchemaAnnotation? = nil,
         name: String,
         typeQName: XMLQualifiedName?,
-        use: String?,
+        use: XMLSchemaAttributeUseKind?,
         defaultValue: String? = nil,
         fixedValue: String? = nil,
         inlineSimpleType: XMLSchemaAnonymousSimpleType? = nil
@@ -750,14 +770,14 @@ public struct XMLSchemaAttribute: Sendable, Equatable {
 
 public struct XMLSchemaAttributeReference: Sendable, Equatable {
     public let refQName: XMLQualifiedName
-    public let use: String?
+    public let use: XMLSchemaAttributeUseKind?
     public let defaultValue: String?
     public let fixedValue: String?
     public let annotation: XMLSchemaAnnotation?
 
     public init(
         refQName: XMLQualifiedName,
-        use: String? = nil,
+        use: XMLSchemaAttributeUseKind? = nil,
         defaultValue: String? = nil,
         fixedValue: String? = nil,
         annotation: XMLSchemaAnnotation? = nil

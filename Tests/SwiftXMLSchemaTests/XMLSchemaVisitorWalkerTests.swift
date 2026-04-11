@@ -261,4 +261,52 @@ final class XMLSchemaVisitorWalkerTests: XCTestCase {
         XCTAssertTrue(names.contains("shape"))
         XCTAssertTrue(names.contains("canvas"))
     }
+
+    // MARK: - walkComponents(collecting:) overload
+
+    // A visitor that returns a tag string for every visited component, so we can
+    // exercise the collecting overload across all walker branches (schemas,
+    // elements, complex types, attribute uses, simple types, top-level
+    // attributes, attribute groups, model groups, choice groups, content
+    // element uses).
+    struct TagVisitor: XMLSchemaVisitor {
+        func visitSchema(_ schema: XMLNormalizedSchema) -> String { "schema" }
+        func visitElement(_ element: XMLNormalizedElementDeclaration) -> String { "element:\(element.name)" }
+        func visitComplexType(_ complexType: XMLNormalizedComplexType) -> String { "complex:\(complexType.name)" }
+        func visitSimpleType(_ simpleType: XMLNormalizedSimpleType) -> String { "simple:\(simpleType.name)" }
+        func visitAttribute(_ attribute: XMLNormalizedAttributeDefinition) -> String { "attr:\(attribute.name)" }
+        func visitAttributeGroup(_ ag: XMLNormalizedAttributeGroup) -> String { "ag:\(ag.name)" }
+        func visitModelGroup(_ modelGroup: XMLNormalizedModelGroup) -> String { "mg:\(modelGroup.name)" }
+        func visitElementUse(_ elementUse: XMLNormalizedElementUse) -> String { "use:\(elementUse.name)" }
+        func visitChoiceGroup(_ choice: XMLNormalizedChoiceGroup) -> String { "choice" }
+        func visitAttributeUse(_ attributeUse: XMLNormalizedAttributeUse) -> String { "attrUse:\(attributeUse.name)" }
+    }
+
+    func test_walkComponents_collecting_returnsAllResultsInTraversalOrder() throws {
+        let n = try makeNormalized()
+        var visitor = TagVisitor()
+        let results = XMLSchemaWalker(schemaSet: n).walkComponents(collecting: &visitor)
+
+        XCTAssertTrue(results.contains("schema"))
+        XCTAssertTrue(results.contains("element:shape"))
+        XCTAssertTrue(results.contains("element:canvas"))
+        XCTAssertTrue(results.contains("complex:Shape"))
+        XCTAssertTrue(results.contains("complex:Canvas"))
+        XCTAssertTrue(results.contains("simple:Color"))
+        XCTAssertTrue(results.contains("attr:globalId"))
+        XCTAssertTrue(results.contains("ag:MetaAttrs"))
+        XCTAssertTrue(results.contains("mg:ShapeFields"))
+        XCTAssertTrue(results.contains("use:color"))
+        XCTAssertTrue(results.contains("use:circle"))
+        XCTAssertTrue(results.contains("use:rect"))
+        XCTAssertTrue(results.contains("choice"))
+        XCTAssertTrue(results.contains("attrUse:id"))
+    }
+
+    func test_walkComponents_collecting_onEmptySchemaSet_returnsEmpty() throws {
+        let n = XMLNormalizedSchemaSet(schemas: [])
+        var visitor = TagVisitor()
+        let results = XMLSchemaWalker(schemaSet: n).walkComponents(collecting: &visitor)
+        XCTAssertTrue(results.isEmpty)
+    }
 }

@@ -256,7 +256,7 @@ final class XMLSchemaDocumentParserTests: XCTestCase {
         XCTAssertEqual(dog.annotation?.documentation, ["Dog docs"])
 
         XCTAssertEqual(wrapperInlineComplex.annotation?.documentation, ["Inline complex docs"])
-        XCTAssertEqual(sharedRef.use, "required")
+        XCTAssertEqual(sharedRef.use, .required)
         XCTAssertEqual(sharedRef.defaultValue, "fr")
         XCTAssertEqual(sharedRef.annotation?.documentation, ["Shared ref docs"])
         XCTAssertEqual(sharedDefinition.defaultValue, "en")

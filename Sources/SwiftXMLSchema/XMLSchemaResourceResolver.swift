@@ -125,7 +125,7 @@ public struct LocalFileXMLSchemaResourceResolver: XMLSchemaResourceResolver {
 
 /// Resolves and loads schemas from remote `http://` and `https://` URLs.
 ///
-/// The synchronous ``loadSchemaData(from:)`` implementation blocks the calling
+/// The synchronous `loadSchemaData(from:)` implementation blocks the calling
 /// thread using a `DispatchSemaphore`. In async contexts, the async overload
 /// uses `withCheckedThrowingContinuation` to avoid blocking cooperative threads.
 ///
