@@ -12,6 +12,8 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 - **`XMLJSONSchemaExporter`**: removed unreachable `case .choice` branch in `objectNode(for:)` (already handled earlier in the same `switch`); silences a Swift compiler warning.
 - **README refreshed** for 1.0: feature inventory (parsing, normalisation, walker, diff, statistics, JSON Schema export, build plugin, resource resolution, diagnostics), Swift 5.4 runtime support, installation snippet, and DocC generation instructions.
 - **Doc-comment hygiene**: removed dead symbol link to internal `XMLSchemaParsingResult` from `XMLSchemaParsingDiagnostic`; downgraded ambiguous DocC link `loadSchemaData(from:)` on `RemoteXMLSchemaResourceResolver` to plain code formatting. DocC now builds without warnings.
+- **Swift 5.6 compatibility restored** in `XMLSchemaStatistics` and `XMLSchemaDiff` by replacing shorthand `guard let foo` with `guard let foo = foo`, and by lifting a complex array literal in `facetSummary` into an intermediate `[String?]` variable to avoid the Swift 5.6 type-check timeout. Unblocks the `tooling-5.6-plus` CI lane.
+- **Test coverage** for `XMLSchemaDiff` and `XMLSchemaWalker` raised to push aggregate line coverage above the 90% gate enforced by the `quality-5.10` lane. New `XMLSchemaDiffCoverageTests` targets previously uncovered branches across complex/simple type and element diff paths; `XMLSchemaVisitorWalkerTests` now exercises the `walkComponents(collecting:)` overload end-to-end.
 
 ### Added — Phase 1.0 DocC Documentation
 

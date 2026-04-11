@@ -591,8 +591,8 @@ public struct XMLSchemaDiffer: Sendable {
     // MARK: - Helpers
 
     private func facetSummary(_ facets: XMLSchemaFacetSet?) -> String {
-        guard let facets else { return "none" }
-        let parts: [String] = [
+        guard let facets = facets else { return "none" }
+        let optional: [String?] = [
             facets.minLength.map { "minLength:\($0)" },
             facets.maxLength.map { "maxLength:\($0)" },
             facets.length.map { "length:\($0)" },
@@ -603,7 +603,8 @@ public struct XMLSchemaDiffer: Sendable {
             facets.maxExclusive.map { "maxExclusive:\($0)" },
             facets.totalDigits.map { "totalDigits:\($0)" },
             facets.fractionDigits.map { "fractionDigits:\($0)" }
-        ].compactMap { $0 }
+        ]
+        let parts = optional.compactMap { $0 }
         return parts.isEmpty ? "empty" : parts.joined(separator: ", ")
     }
 }

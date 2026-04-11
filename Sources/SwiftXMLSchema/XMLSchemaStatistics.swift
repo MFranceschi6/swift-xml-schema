@@ -148,7 +148,7 @@ extension XMLNormalizedSchemaSet {
         var referencedKeys = Set<String>()
 
         func addQName(_ qname: XMLQualifiedName?) {
-            guard let qname else { return }
+            guard let qname = qname else { return }
             referencedKeys.insert("\(qname.namespaceURI ?? ""):\(qname.localName)")
         }
 

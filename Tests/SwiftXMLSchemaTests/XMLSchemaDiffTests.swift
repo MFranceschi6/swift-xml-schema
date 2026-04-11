@@ -17,6 +17,31 @@ final class XMLSchemaDiffTests: XCTestCase {
         return XMLSchemaDiffer().diff(old: oldSet, new: newSet)
     }
 
+    private func fieldChanges(_ entry: XMLSchemaComplexTypeDiff) -> [XMLSchemaFieldChange] {
+        if case .modified(_, _, let changes) = entry.change { return changes }
+        return []
+    }
+
+    private func fieldChanges(_ entry: XMLSchemaSimpleTypeDiff) -> [XMLSchemaFieldChange] {
+        if case .modified(_, _, let changes) = entry.change { return changes }
+        return []
+    }
+
+    private func fieldChanges(_ entry: XMLSchemaElementDiff) -> [XMLSchemaFieldChange] {
+        if case .modified(_, _, let changes) = entry.change { return changes }
+        return []
+    }
+
+    private func fieldIsAdded(_ change: XMLSchemaFieldChange, name: String) -> Bool {
+        if case .itemAdded(let n) = change.kind { return n == name }
+        return false
+    }
+
+    private func fieldIsRemoved(_ change: XMLSchemaFieldChange, name: String) -> Bool {
+        if case .itemRemoved(let n) = change.kind { return n == name }
+        return false
+    }
+
     // MARK: - No changes
 
     func test_diff_identical_isEmpty() throws {
@@ -406,32 +431,5 @@ final class XMLSchemaDiffTests: XCTestCase {
         XCTAssertTrue(result.hasBreakingChanges)
         let entry = try XCTUnwrap(result.complexTypeChanges.first)
         XCTAssertTrue(fieldChanges(entry).contains { $0.fieldName == "isMixed" && $0.isBreaking })
-    }
-
-    // MARK: - Helpers
-
-    private func fieldChanges(_ entry: XMLSchemaComplexTypeDiff) -> [XMLSchemaFieldChange] {
-        if case .modified(_, _, let changes) = entry.change { return changes }
-        return []
-    }
-
-    private func fieldChanges(_ entry: XMLSchemaSimpleTypeDiff) -> [XMLSchemaFieldChange] {
-        if case .modified(_, _, let changes) = entry.change { return changes }
-        return []
-    }
-
-    private func fieldChanges(_ entry: XMLSchemaElementDiff) -> [XMLSchemaFieldChange] {
-        if case .modified(_, _, let changes) = entry.change { return changes }
-        return []
-    }
-
-    private func fieldIsAdded(_ change: XMLSchemaFieldChange, name: String) -> Bool {
-        if case .itemAdded(let n) = change.kind { return n == name }
-        return false
-    }
-
-    private func fieldIsRemoved(_ change: XMLSchemaFieldChange, name: String) -> Bool {
-        if case .itemRemoved(let n) = change.kind { return n == name }
-        return false
     }
 }
