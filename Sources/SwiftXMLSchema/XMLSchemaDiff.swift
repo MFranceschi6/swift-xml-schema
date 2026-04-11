@@ -167,8 +167,11 @@ public struct XMLSchemaDiff: Sendable, Equatable {
 /// Matching between old and new is done by `(localName, namespaceURI)`.
 /// Anonymous types (synthesised from inline `<xsd:complexType>` children) are excluded.
 public struct XMLSchemaDiffer: Sendable {
+    public let logger: Logger
 
-    public init() {}
+    public init(logger: Logger = Logger(label: "SwiftXMLSchema.differ")) {
+        self.logger = logger
+    }
 
     /// Computes the diff from `old` to `new`.
     ///
@@ -177,7 +180,7 @@ public struct XMLSchemaDiffer: Sendable {
     ///   - new: The updated schema set.
     /// - Returns: A ``XMLSchemaDiff`` describing all structural changes.
     public func diff(old: XMLNormalizedSchemaSet, new: XMLNormalizedSchemaSet) -> XMLSchemaDiff {
-        differLogger.debug("Computing schema diff", metadata: [
+        logger.debug("Computing schema diff", metadata: [
             "oldComplexTypes": .stringConvertible(old.allComplexTypes.filter { !$0.isAnonymous }.count),
             "newComplexTypes": .stringConvertible(new.allComplexTypes.filter { !$0.isAnonymous }.count),
             "oldElements": .stringConvertible(old.allElements.count),
@@ -226,14 +229,14 @@ public struct XMLSchemaDiffer: Sendable {
             + result.breakingElementChanges.count
 
         if result.isEmpty {
-            differLogger.info("Diff complete: no changes detected")
+            logger.info("Diff complete: no changes detected")
         } else if breakingCount > 0 {
-            differLogger.notice("Diff complete: breaking changes detected", metadata: [
+            logger.notice("Diff complete: breaking changes detected", metadata: [
                 "totalChanges": .stringConvertible(totalChanges),
                 "breakingChanges": .stringConvertible(breakingCount)
             ])
         } else {
-            differLogger.info("Diff complete: non-breaking changes only", metadata: [
+            logger.info("Diff complete: non-breaking changes only", metadata: [
                 "totalChanges": .stringConvertible(totalChanges)
             ])
         }

@@ -742,7 +742,11 @@ public struct XMLNormalizedSchemaSet: Sendable, Equatable, Codable {
 }
 
 public struct XMLSchemaNormalizer: Sendable {
-    public init() {}
+    public let logger: Logger
+
+    public init(logger: Logger = Logger(label: "SwiftXMLSchema.normalizer")) {
+        self.logger = logger
+    }
 
     #if swift(>=6.0)
     public func normalize(_ schemaSet: XMLSchemaSet) throws(XMLSchemaParsingError) -> XMLNormalizedSchemaSet {
@@ -761,7 +765,7 @@ public struct XMLSchemaNormalizer: Sendable {
     #endif
 
     private func normalizeImpl(_ schemaSet: XMLSchemaSet) throws -> XMLNormalizedSchemaSet {
-        normalizerLogger.debug("Starting normalisation", metadata: [
+        logger.debug("Starting normalisation", metadata: [
             "schemas": .stringConvertible(schemaSet.schemas.count)
         ])
 
@@ -770,7 +774,7 @@ public struct XMLSchemaNormalizer: Sendable {
         let resolver = RawNormalizationResolver(schemaSet: augmentedSchemaSet)
 
         let normalizedSchemas: [XMLNormalizedSchema] = try augmentedSchemaSet.schemas.map { schema in
-            normalizerLogger.debug("Normalising schema", metadata: [
+            logger.debug("Normalising schema", metadata: [
                 "namespace": .string(schema.targetNamespace ?? "(none)"),
                 "complexTypes": .stringConvertible(schema.complexTypes.count),
                 "simpleTypes": .stringConvertible(schema.simpleTypes.count),
@@ -839,7 +843,7 @@ public struct XMLSchemaNormalizer: Sendable {
         let totalComplex  = result.allComplexTypes.filter { !$0.isAnonymous }.count
         let totalSimple   = result.allSimpleTypes.count
         let totalElements = result.allElements.count
-        normalizerLogger.info("Normalisation complete", metadata: [
+        logger.info("Normalisation complete", metadata: [
             "schemas": .stringConvertible(result.schemas.count),
             "complexTypes": .stringConvertible(totalComplex),
             "simpleTypes": .stringConvertible(totalSimple),
@@ -1505,7 +1509,7 @@ private extension XMLSchemaNormalizer {
         resolver: RawNormalizationResolver,
         contextPath: [String]
     ) throws -> XMLNormalizedComplexType {
-        normalizerLogger.trace("Normalising complexType", metadata: [
+        logger.trace("Normalising complexType", metadata: [
             "name": .string(complexType.name),
             "namespace": .string(namespaceURI ?? "(none)")
         ])
@@ -1564,7 +1568,7 @@ private extension XMLSchemaNormalizer {
         namespaceURI: String?,
         contextPath: [String]
     ) -> XMLNormalizedSimpleType {
-        normalizerLogger.trace("Normalising simpleType", metadata: [
+        logger.trace("Normalising simpleType", metadata: [
             "name": .string(simpleType.name),
             "namespace": .string(namespaceURI ?? "(none)")
         ])

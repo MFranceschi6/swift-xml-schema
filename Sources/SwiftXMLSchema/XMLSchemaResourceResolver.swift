@@ -76,7 +76,11 @@ extension XMLSchemaResourceResolver {
 /// rejected. Use ``CompositeXMLSchemaResourceResolver`` to chain this resolver
 /// with ``RemoteXMLSchemaResourceResolver`` when network access is needed.
 public struct LocalFileXMLSchemaResourceResolver: XMLSchemaResourceResolver {
-    public init() {}
+    public let logger: Logger
+
+    public init(logger: Logger = Logger(label: "SwiftXMLSchema.resolver")) {
+        self.logger = logger
+    }
 
     public func resolve(schemaLocation: String, relativeTo sourceURL: URL?) throws -> URL {
         if schemaLocation.hasPrefix("http://") || schemaLocation.hasPrefix("https://") {
@@ -108,7 +112,7 @@ public struct LocalFileXMLSchemaResourceResolver: XMLSchemaResourceResolver {
         }
 
         let resolved = URL(fileURLWithPath: schemaLocation, relativeTo: baseDirectoryURL).standardizedFileURL
-        resolverLogger.debug("Local file resolved", metadata: [
+        logger.debug("Local file resolved", metadata: [
             "schemaLocation": .string(schemaLocation),
             "resolvedPath": .string(resolved.path)
         ])
@@ -116,7 +120,7 @@ public struct LocalFileXMLSchemaResourceResolver: XMLSchemaResourceResolver {
     }
 
     public func loadSchemaData(from url: URL) throws -> Data {
-        resolverLogger.debug("Loading local schema data", metadata: ["path": .string(url.path)])
+        logger.debug("Loading local schema data", metadata: ["path": .string(url.path)])
         do {
             return try Data(contentsOf: url)
         } catch {
@@ -142,9 +146,11 @@ public struct LocalFileXMLSchemaResourceResolver: XMLSchemaResourceResolver {
 public struct RemoteXMLSchemaResourceResolver: XMLSchemaResourceResolver {
     /// The request timeout in seconds. Defaults to 30.
     public let timeout: TimeInterval
+    public let logger: Logger
 
-    public init(timeout: TimeInterval = 30) {
+    public init(timeout: TimeInterval = 30, logger: Logger = Logger(label: "SwiftXMLSchema.resolver")) {
         self.timeout = timeout
+        self.logger = logger
     }
 
     public func resolve(schemaLocation: String, relativeTo sourceURL: URL?) throws -> URL {
@@ -175,7 +181,7 @@ public struct RemoteXMLSchemaResourceResolver: XMLSchemaResourceResolver {
             )
         }
 
-        resolverLogger.debug("Fetching remote schema", metadata: ["url": .string(url.absoluteString)])
+        logger.debug("Fetching remote schema", metadata: ["url": .string(url.absoluteString)])
 
         var request = URLRequest(url: url)
         request.timeoutInterval = timeout
@@ -209,9 +215,9 @@ public struct RemoteXMLSchemaResourceResolver: XMLSchemaResourceResolver {
 
         switch box.value {
         case .success:
-            resolverLogger.debug("Remote schema fetched", metadata: ["url": .string(url.absoluteString)])
+            logger.debug("Remote schema fetched", metadata: ["url": .string(url.absoluteString)])
         case .failure(let err):
-            resolverLogger.warning("Remote schema fetch failed", metadata: [
+            logger.warning("Remote schema fetch failed", metadata: [
                 "url": .string(url.absoluteString),
                 "error": .string("\(err)")
             ])
@@ -231,7 +237,7 @@ public struct RemoteXMLSchemaResourceResolver: XMLSchemaResourceResolver {
             )
         }
 
-        resolverLogger.debug("Fetching remote schema (async)", metadata: ["url": .string(url.absoluteString)])
+        logger.debug("Fetching remote schema (async)", metadata: ["url": .string(url.absoluteString)])
 
         return try await withCheckedThrowingContinuation { continuation in
             var request = URLRequest(url: url)
@@ -245,7 +251,7 @@ public struct RemoteXMLSchemaResourceResolver: XMLSchemaResourceResolver {
                         schemaLocation: url.absoluteString,
                         message: error?.localizedDescription ?? "Unknown network error."
                     )
-                    resolverLogger.warning("Async remote schema fetch failed", metadata: [
+                    logger.warning("Async remote schema fetch failed", metadata: [
                         "url": .string(url.absoluteString),
                         "error": .string(error?.localizedDescription ?? "Unknown network error.")
                     ])
@@ -271,13 +277,15 @@ public struct CatalogXMLSchemaResourceResolver: XMLSchemaResourceResolver {
     private let catalogURL: URL
     private let systemMappings: [String: URL]
     private let uriMappings: [String: URL]
+    public let logger: Logger
 
     /// Initialises the resolver by parsing the catalog at `catalogURL`.
     ///
     /// - Throws: ``XMLSchemaParsingError/resourceResolutionFailed(schemaLocation:message:sourceLocation:)``
     ///   if the catalog file cannot be read or parsed.
-    public init(catalogURL: URL) throws {
+    public init(catalogURL: URL, logger: Logger = Logger(label: "SwiftXMLSchema.resolver")) throws {
         self.catalogURL = catalogURL
+        self.logger = logger
 
         let data: Data
         do {
@@ -325,7 +333,7 @@ public struct CatalogXMLSchemaResourceResolver: XMLSchemaResourceResolver {
 
         systemMappings = system
         uriMappings = uri
-        resolverLogger.debug("Catalog loaded", metadata: [
+        logger.debug("Catalog loaded", metadata: [
             "catalog": .string(catalogURL.path),
             "systemMappings": .stringConvertible(system.count),
             "uriMappings": .stringConvertible(uri.count)
@@ -334,7 +342,7 @@ public struct CatalogXMLSchemaResourceResolver: XMLSchemaResourceResolver {
 
     public func resolve(schemaLocation: String, relativeTo sourceURL: URL?) throws -> URL {
         if let mapped = systemMappings[schemaLocation] ?? uriMappings[schemaLocation] {
-            resolverLogger.debug("Catalog hit", metadata: [
+            logger.debug("Catalog hit", metadata: [
                 "schemaLocation": .string(schemaLocation),
                 "resolvedPath": .string(mapped.path)
             ])
@@ -342,7 +350,7 @@ public struct CatalogXMLSchemaResourceResolver: XMLSchemaResourceResolver {
         }
         let baseDirectory = catalogURL.deletingLastPathComponent()
         let fallback = URL(fileURLWithPath: schemaLocation, relativeTo: baseDirectory).standardizedFileURL
-        resolverLogger.debug("Catalog miss — using relative fallback", metadata: [
+        logger.debug("Catalog miss — using relative fallback", metadata: [
             "schemaLocation": .string(schemaLocation),
             "fallbackPath": .string(fallback.path)
         ])
@@ -379,13 +387,15 @@ public struct CatalogXMLSchemaResourceResolver: XMLSchemaResourceResolver {
 public struct CompositeXMLSchemaResourceResolver: XMLSchemaResourceResolver {
     /// The child resolvers, tried in order.
     public let resolvers: [any XMLSchemaResourceResolver]
+    public let logger: Logger
 
-    public init(_ resolvers: [any XMLSchemaResourceResolver]) {
+    public init(_ resolvers: [any XMLSchemaResourceResolver], logger: Logger = Logger(label: "SwiftXMLSchema.resolver")) {
         self.resolvers = resolvers
+        self.logger = logger
     }
 
     public func resolve(schemaLocation: String, relativeTo sourceURL: URL?) throws -> URL {
-        resolverLogger.debug("Composite resolving schema location", metadata: [
+        logger.debug("Composite resolving schema location", metadata: [
             "schemaLocation": .string(schemaLocation),
             "resolverCount": .stringConvertible(resolvers.count)
         ])
@@ -396,7 +406,7 @@ public struct CompositeXMLSchemaResourceResolver: XMLSchemaResourceResolver {
         for resolver in resolvers {
             do {
                 let url = try resolver.resolve(schemaLocation: schemaLocation, relativeTo: sourceURL)
-                resolverLogger.debug("Composite resolver succeeded", metadata: [
+                logger.debug("Composite resolver succeeded", metadata: [
                     "schemaLocation": .string(schemaLocation),
                     "resolvedURL": .string(url.absoluteString)
                 ])
@@ -405,7 +415,7 @@ public struct CompositeXMLSchemaResourceResolver: XMLSchemaResourceResolver {
                 lastError = error
             }
         }
-        resolverLogger.warning("All resolvers failed for schema location", metadata: [
+        logger.warning("All resolvers failed for schema location", metadata: [
             "schemaLocation": .string(schemaLocation),
             "lastError": .string("\(lastError)")
         ])
@@ -424,7 +434,7 @@ public struct CompositeXMLSchemaResourceResolver: XMLSchemaResourceResolver {
                 lastError = error
             }
         }
-        resolverLogger.warning("All resolvers failed to load schema data", metadata: [
+        logger.warning("All resolvers failed to load schema data", metadata: [
             "url": .string(url.absoluteString),
             "lastError": .string("\(lastError)")
         ])

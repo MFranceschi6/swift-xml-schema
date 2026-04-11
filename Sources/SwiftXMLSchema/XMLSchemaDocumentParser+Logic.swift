@@ -8,7 +8,7 @@ private typealias XMLCoderNode = SwiftXMLCoder.XMLNode
 
 extension XMLSchemaDocumentParser {
     func parseDocument(data: Data, sourceURL: URL?) throws -> XMLSchemaSet {
-        parserLogger.debug("Parsing XSD document", metadata: [
+        logger.debug("Parsing XSD document", metadata: [
             "source": .string(sourceURL?.path ?? "<data>")
         ])
 
@@ -58,7 +58,7 @@ extension XMLSchemaDocumentParser {
         let totalComplex  = schemaSet.schemas.reduce(0) { $0 + $1.complexTypes.count }
         let totalSimple   = schemaSet.schemas.reduce(0) { $0 + $1.simpleTypes.count }
         let totalElements = schemaSet.schemas.reduce(0) { $0 + $1.elements.count }
-        parserLogger.info("Parsed XSD document", metadata: [
+        logger.info("Parsed XSD document", metadata: [
             "source": .string(sourceURL?.path ?? "<data>"),
             "schemas": .stringConvertible(schemaSet.schemas.count),
             "complexTypes": .stringConvertible(totalComplex),
@@ -76,7 +76,7 @@ extension XMLSchemaDocumentParser {
         loadedSchemaURLs: inout Set<String>,
         schemas: inout [XMLSchema]
     ) throws {
-        parserLogger.debug("Loading schema", metadata: [
+        logger.debug("Loading schema", metadata: [
             "source": .string(sourceURL?.path ?? "<inline>")
         ])
 
@@ -86,7 +86,7 @@ extension XMLSchemaDocumentParser {
         )
 
         let parsedSchema = try parseSchema(schemaNode: schemaNode, sourceURL: sourceURL, namespaceMappings: namespaceMappings)
-        parserLogger.debug("Schema parsed", metadata: [
+        logger.debug("Schema parsed", metadata: [
             "namespace": .string(parsedSchema.targetNamespace ?? "(none)"),
             "complexTypes": .stringConvertible(parsedSchema.complexTypes.count),
             "simpleTypes": .stringConvertible(parsedSchema.simpleTypes.count),
@@ -102,13 +102,13 @@ extension XMLSchemaDocumentParser {
             let schemaURL = try resourceResolver.resolve(schemaLocation: schemaLocation, relativeTo: sourceURL)
             let schemaURLKey = schemaURL.standardizedFileURL.path
             if loadedSchemaURLs.contains(schemaURLKey) {
-                parserLogger.warning("Schema already loaded, skipping (cycle guard)", metadata: [
+                logger.warning("Schema already loaded, skipping (cycle guard)", metadata: [
                     "schemaLocation": .string(schemaLocation),
                     "resolvedPath": .string(schemaURLKey)
                 ])
                 continue
             }
-            parserLogger.debug("Resolving import/include", metadata: [
+            logger.debug("Resolving import/include", metadata: [
                 "schemaLocation": .string(schemaLocation),
                 "relativeTo": .string(sourceURL?.path ?? "<none>")
             ])
@@ -142,13 +142,13 @@ extension XMLSchemaDocumentParser {
             let schemaURL = try resourceResolver.resolve(schemaLocation: redefine.schemaLocation, relativeTo: sourceURL)
             let schemaURLKey = schemaURL.standardizedFileURL.path
             if loadedSchemaURLs.contains(schemaURLKey) {
-                parserLogger.warning("Redefine target already loaded, skipping (cycle guard)", metadata: [
+                logger.warning("Redefine target already loaded, skipping (cycle guard)", metadata: [
                     "schemaLocation": .string(redefine.schemaLocation),
                     "resolvedPath": .string(schemaURLKey)
                 ])
                 continue
             }
-            parserLogger.debug("Resolving redefine", metadata: [
+            logger.debug("Resolving redefine", metadata: [
                 "schemaLocation": .string(redefine.schemaLocation),
                 "relativeTo": .string(sourceURL?.path ?? "<none>")
             ])
@@ -439,7 +439,7 @@ extension XMLSchemaDocumentParser {
                 sourceLocation: XMLSchemaSourceLocation(fileURL: sourceURL, lineNumber: complexTypeNode.lineNumber)
             )
         }
-        parserLogger.trace("Parsing complexType", metadata: ["name": .string(name)])
+        logger.trace("Parsing complexType", metadata: ["name": .string(name)])
 
         let complexTypeChildren = complexTypeNode.children()
         let complexContentNode = complexTypeChildren.first(where: { $0.name == "complexContent" })
@@ -896,7 +896,7 @@ extension XMLSchemaDocumentParser {
                 sourceLocation: XMLSchemaSourceLocation(fileURL: sourceURL, lineNumber: simpleTypeNode.lineNumber)
             )
         }
-        parserLogger.trace("Parsing simpleType", metadata: ["name": .string(name)])
+        logger.trace("Parsing simpleType", metadata: ["name": .string(name)])
 
         let restrictionNode = simpleTypeNode.children().first(where: { $0.name == "restriction" })
         let listNode = simpleTypeNode.children().first(where: { $0.name == "list" })

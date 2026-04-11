@@ -121,8 +121,11 @@ public indirect enum JSONSchemaItems: Sendable, Encodable {
 /// Only components from `effectiveContent` and `effectiveAttributes` are emitted,
 /// matching the code-generation recommendation in `SCHEMA_FORMAT.md`.
 public struct XMLJSONSchemaExporter: Sendable {
+    public let logger: Logger
 
-    public init() {}
+    public init(logger: Logger = Logger(label: "SwiftXMLSchema.exporter")) {
+        self.logger = logger
+    }
 
     /// Export all schemas in the set as a single JSON Schema document.
     /// `title` defaults to the first target namespace if not provided.
@@ -133,7 +136,7 @@ public struct XMLJSONSchemaExporter: Sendable {
         let totalComplex  = schemaSet.allComplexTypes.filter { !$0.isAnonymous }.count
         let totalSimple   = schemaSet.allSimpleTypes.count
         let totalElements = schemaSet.allElements.count
-        exporterLogger.debug("Starting JSON Schema export", metadata: [
+        logger.debug("Starting JSON Schema export", metadata: [
             "complexTypes": .stringConvertible(totalComplex),
             "simpleTypes": .stringConvertible(totalSimple),
             "elements": .stringConvertible(totalElements)
@@ -144,12 +147,12 @@ public struct XMLJSONSchemaExporter: Sendable {
         for schema in schemaSet.schemas {
             for complexType in schema.complexTypes where !complexType.isAnonymous {
                 let key = defKey(name: complexType.name, namespaceURI: complexType.namespaceURI)
-                exporterLogger.trace("Exporting complexType", metadata: ["key": .string(key)])
+                logger.trace("Exporting complexType", metadata: ["key": .string(key)])
                 defs[key] = node(for: complexType, in: schemaSet)
             }
             for simpleType in schema.simpleTypes {
                 let key = defKey(name: simpleType.name, namespaceURI: simpleType.namespaceURI)
-                exporterLogger.trace("Exporting simpleType", metadata: ["key": .string(key)])
+                logger.trace("Exporting simpleType", metadata: ["key": .string(key)])
                 defs[key] = node(for: simpleType)
             }
         }
@@ -175,7 +178,7 @@ public struct XMLJSONSchemaExporter: Sendable {
         }
 
         let docTitle = title ?? schemaSet.schemas.first?.targetNamespace
-        exporterLogger.info("JSON Schema export complete", metadata: [
+        logger.info("JSON Schema export complete", metadata: [
             "title": .string(docTitle ?? "(none)"),
             "definitions": .stringConvertible(defs.count),
             "properties": .stringConvertible(properties.count)

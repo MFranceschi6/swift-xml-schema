@@ -1,11 +1,17 @@
 import Foundation
+import Logging
 import SwiftXMLCoder
 
 public struct XMLSchemaDocumentParser: Sendable {
     let resourceResolver: any XMLSchemaResourceResolver
+    let logger: Logger
 
-    public init(resourceResolver: any XMLSchemaResourceResolver = LocalFileXMLSchemaResourceResolver()) {
+    public init(
+        resourceResolver: any XMLSchemaResourceResolver = LocalFileXMLSchemaResourceResolver(),
+        logger: Logger = Logger(label: "SwiftXMLSchema.parser")
+    ) {
         self.resourceResolver = resourceResolver
+        self.logger = logger
     }
 
     #if swift(>=6.0)

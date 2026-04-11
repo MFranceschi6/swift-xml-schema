@@ -380,4 +380,66 @@ final class XMLSchemaPhase08Tests: XCTestCase {
         let json = try XCTUnwrap(JSONSerialization.jsonObject(with: data) as? [String: Any])
         XCTAssertEqual(json["title"] as? String, "My API Schema")
     }
+
+    // MARK: - Choice group
+
+    func test_export_choice_inlinesElementsAsProperties() throws {
+        let xsd = """
+        <xsd:schema xmlns:xsd="http://www.w3.org/2001/XMLSchema" targetNamespace="urn:ch">
+          <xsd:complexType name="Payment">
+            <xsd:choice>
+              <xsd:element name="creditCard" type="xsd:string"/>
+              <xsd:element name="bankTransfer" type="xsd:string"/>
+            </xsd:choice>
+          </xsd:complexType>
+        </xsd:schema>
+        """
+        let json = try exportedJSON(from: xsd)
+        let defs = try XCTUnwrap(json["$defs"] as? [String: Any])
+        let paymentDef = try XCTUnwrap(defs["Payment"] as? [String: Any])
+        // Choice elements are inlined as optional properties on the object
+        let properties = try XCTUnwrap(paymentDef["properties"] as? [String: Any])
+        XCTAssertNotNil(properties["creditCard"])
+        XCTAssertNotNil(properties["bankTransfer"])
+    }
+
+    // MARK: - Simple content
+
+    func test_export_simpleContent_withAttributes_usesAllOf() throws {
+        // Covers the effectiveSimpleContentValueTypeQName branch when attributes are present
+        let xsd = """
+        <xsd:schema xmlns:xsd="http://www.w3.org/2001/XMLSchema" targetNamespace="urn:sc">
+          <xsd:complexType name="Amount">
+            <xsd:simpleContent>
+              <xsd:extension base="xsd:decimal">
+                <xsd:attribute name="currency" type="xsd:string" use="required"/>
+              </xsd:extension>
+            </xsd:simpleContent>
+          </xsd:complexType>
+        </xsd:schema>
+        """
+        let json = try exportedJSON(from: xsd)
+        let defs = try XCTUnwrap(json["$defs"] as? [String: Any])
+        let amountDef = try XCTUnwrap(defs["Amount"] as? [String: Any])
+        // Simple content + attributes → allOf [valueType, attributeObject]
+        let allOf = try XCTUnwrap(amountDef["allOf"] as? [[String: Any]])
+        XCTAssertFalse(allOf.isEmpty)
+    }
+
+    func test_export_simpleContent_noAttributes_returnsValueType() throws {
+        // Covers the return valueNode path when there are no attributes
+        let xsd = """
+        <xsd:schema xmlns:xsd="http://www.w3.org/2001/XMLSchema" targetNamespace="urn:sc2">
+          <xsd:complexType name="PlainAmount">
+            <xsd:simpleContent>
+              <xsd:extension base="xsd:decimal"/>
+            </xsd:simpleContent>
+          </xsd:complexType>
+        </xsd:schema>
+        """
+        let json = try exportedJSON(from: xsd)
+        let defs = try XCTUnwrap(json["$defs"] as? [String: Any])
+        let def = try XCTUnwrap(defs["PlainAmount"] as? [String: Any])
+        XCTAssertEqual(def["type"] as? String, "number")
+    }
 }
