@@ -30,7 +30,7 @@ import PackageDescription
 let package = Package(
     name: "MyApp",
     dependencies: [
-        .package(url: "https://github.com/your-org/SwiftXMLSchema.git", from: "1.0.0")
+        .package(url: "https://github.com/MFranceschi6/swift-xml-schema.git", from: "1.0.0")
     ],
     targets: [
         .target(

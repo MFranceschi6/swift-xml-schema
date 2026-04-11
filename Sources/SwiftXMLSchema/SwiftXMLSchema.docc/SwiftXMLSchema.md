@@ -14,7 +14,50 @@ no WSDL, no runtime XML instance validation.
 2. Normalise with ``XMLSchemaNormalizer`` → ``XMLNormalizedSchemaSet``
 3. Query, walk, diff, or export the normalised set
 
-### Core types at a glance
+### Quick Start
+
+```swift
+import SwiftXMLSchema
+
+// 1. Parse
+let xsdData = Data("""
+<xsd:schema xmlns:xsd="http://www.w3.org/2001/XMLSchema"
+            xmlns:tns="urn:orders" targetNamespace="urn:orders">
+  <xsd:complexType name="Order">
+    <xsd:sequence>
+      <xsd:element name="id"     type="xsd:string"/>
+      <xsd:element name="amount" type="xsd:decimal"/>
+    </xsd:sequence>
+  </xsd:complexType>
+  <xsd:element name="Order" type="tns:Order"/>
+</xsd:schema>
+""".utf8)
+
+let schemaSet  = try XMLSchemaDocumentParser().parse(data: xsdData)
+
+// 2. Normalise — resolves inheritance, flattens groups, builds O(1) lookup indices
+let normalized = try XMLSchemaNormalizer().normalize(schemaSet)
+
+// 3. Look up a type by name and namespace
+if let order = normalized.complexType(named: "Order", namespaceURI: "urn:orders") {
+    for element in order.effectiveSequence {
+        print(element.name, "→", element.typeQName?.localName ?? "?")
+    }
+}
+// id → string
+// amount → decimal
+```
+
+For multi-file schemas, pass the source file URL so that relative `<xsd:import>` and
+`<xsd:include>` paths resolve automatically:
+
+```swift
+let url       = URL(fileURLWithPath: "/path/to/orders.xsd")
+let schemaSet = try XMLSchemaDocumentParser().parse(url: url)
+let normalized = try XMLSchemaNormalizer().normalize(schemaSet)
+```
+
+### Core Types at a Glance
 
 | Type | Role |
 |---|---|

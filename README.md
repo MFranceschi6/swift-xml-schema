@@ -4,7 +4,7 @@
 [![Platforms](https://img.shields.io/badge/platforms-macOS%20%7C%20Linux-lightgrey)](https://swift.org)
 [![License: MIT](https://img.shields.io/badge/License-MIT-blue)](LICENSE)
 
-`SwiftXMLSchema` is the schema-focused satellite of the XML stack. It parses W3C XSD documents into a reusable, normalised schema model, assembles include/import/redefine graphs, and exposes typed APIs for downstream tooling — code generators, JSON-Schema exporters, schema differs, and beyond.
+`SwiftXMLSchema` parses W3C XSD documents into a strongly-typed, normalised schema model. It assembles include/import/redefine graphs and exposes typed APIs for downstream tooling — code generators, JSON Schema exporters, schema differs, and beyond.
 
 ## Features
 
@@ -26,11 +26,98 @@ Out of scope:
 
 ## Installation
 
+Add the package to your `Package.swift`:
+
 ```swift
-.package(url: "https://github.com/your-org/swift-xml-schema.git", from: "1.0.0")
+.package(url: "https://github.com/MFranceschi6/swift-xml-schema.git", from: "1.0.0")
+```
+
+Then add `SwiftXMLSchema` to your target's dependencies:
+
+```swift
+.target(
+    name: "MyTarget",
+    dependencies: [
+        .product(name: "SwiftXMLSchema", package: "swift-xml-schema")
+    ]
+)
 ```
 
 The package supports Swift 5.4 at runtime, with progressive opt-ins for Swift 5.6 (tooling), 5.9 (macros), 5.10 (quality lane), and the latest Swift toolchain.
+
+## Quick Start
+
+The core pipeline is two steps: **parse**, then **normalise**.
+
+```swift
+import SwiftXMLSchema
+
+// 1. Parse raw XSD bytes
+let xsdData = Data("""
+<xsd:schema xmlns:xsd="http://www.w3.org/2001/XMLSchema"
+            xmlns:tns="urn:orders" targetNamespace="urn:orders">
+  <xsd:complexType name="Order">
+    <xsd:sequence>
+      <xsd:element name="id"     type="xsd:string"/>
+      <xsd:element name="amount" type="xsd:decimal"/>
+    </xsd:sequence>
+  </xsd:complexType>
+  <xsd:element name="Order" type="tns:Order"/>
+</xsd:schema>
+""".utf8)
+
+let schemaSet = try XMLSchemaDocumentParser().parse(data: xsdData)
+
+// 2. Normalise — resolves inheritance, flattens groups, builds lookup indices
+let normalized = try XMLSchemaNormalizer().normalize(schemaSet)
+
+// 3. Query
+if let order = normalized.complexType(named: "Order", namespaceURI: "urn:orders") {
+    for element in order.effectiveSequence {
+        print(element.name, "→", element.typeQName?.localName ?? "?")
+    }
+}
+// id → string
+// amount → decimal
+```
+
+### Walking the Schema Tree
+
+Use `XMLSchemaWalker` with a custom `XMLSchemaVisitor` for depth-first traversal:
+
+```swift
+struct ElementCollector: XMLSchemaVisitor {
+    var names: [String] = []
+    mutating func visitElement(_ element: XMLNormalizedElementDeclaration) {
+        names.append(element.name)
+    }
+}
+
+var collector = ElementCollector()
+XMLSchemaWalker(schemaSet: normalized).walkComponents(visitor: &collector)
+print(collector.names) // ["Order"]
+```
+
+### Detecting Breaking Changes
+
+```swift
+let differ = XMLSchemaDiffer()
+let diff   = differ.diff(old: previousSchema, new: currentSchema)
+
+if diff.hasBreakingChanges {
+    for entry in diff.breakingComplexTypeChanges {
+        print("BREAKING change in '\(entry.name)'")
+    }
+}
+```
+
+### Exporting to JSON Schema
+
+```swift
+let exporter  = XMLJSONSchemaExporter()
+let document  = exporter.export(normalized)
+let jsonData  = try JSONEncoder().encode(document)
+```
 
 ## Documentation
 
@@ -40,26 +127,14 @@ Full DocC documentation is available in `Sources/SwiftXMLSchema/SwiftXMLSchema.d
 swift package generate-documentation --target SwiftXMLSchema
 ```
 
-Articles cover Getting Started, the component model, the visitor/walker, the build plugin, JSON Schema export, and schema diff & statistics.
+Articles cover:
 
-## AI Workflow
-
-- Root policy entrypoints:
-  - `CLAUDE.md`
-  - `AGENTS.md`
-  - `agent.md`
-- Deep-dive policy lives in `.claude/agent/`
-- Active plans live in `.claude/plans/`
-- Technical reports live in `.claude/reports/`
-- Reusable workflows live in `.claude/skills/`
-
-Before closing technical work, run:
-
-```sh
-swift build -c debug
-swift test --enable-code-coverage
-swiftlint lint
-```
+- Getting Started — parse, normalise, and query
+- Working with the Component Model — lookups, inheritance, substitution groups
+- Visitor and Walker — depth-first traversal and code-generation patterns
+- JSON Schema Export — XSD-to-JSON-Schema conversion and mapping rules
+- Schema Diff and Statistics — breaking-change detection and aggregate metrics
+- Build Plugin — generate schema artefacts at build time via the SPM plugin
 
 ## Development Scripts
 
