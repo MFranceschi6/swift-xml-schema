@@ -1,4 +1,5 @@
 import Foundation
+import Logging
 import SwiftXMLCoder
 // On Linux, URLSession/URLRequest live in FoundationNetworking, not Foundation.
 #if canImport(FoundationNetworking)
@@ -106,10 +107,16 @@ public struct LocalFileXMLSchemaResourceResolver: XMLSchemaResourceResolver {
             baseDirectoryURL = sourceURL.deletingLastPathComponent()
         }
 
-        return URL(fileURLWithPath: schemaLocation, relativeTo: baseDirectoryURL).standardizedFileURL
+        let resolved = URL(fileURLWithPath: schemaLocation, relativeTo: baseDirectoryURL).standardizedFileURL
+        resolverLogger.debug("Local file resolved", metadata: [
+            "schemaLocation": .string(schemaLocation),
+            "resolvedPath": .string(resolved.path)
+        ])
+        return resolved
     }
 
     public func loadSchemaData(from url: URL) throws -> Data {
+        resolverLogger.debug("Loading local schema data", metadata: ["path": .string(url.path)])
         do {
             return try Data(contentsOf: url)
         } catch {
@@ -125,7 +132,7 @@ public struct LocalFileXMLSchemaResourceResolver: XMLSchemaResourceResolver {
 
 /// Resolves and loads schemas from remote `http://` and `https://` URLs.
 ///
-/// The synchronous `loadSchemaData(from:)` implementation blocks the calling
+/// The synchronous ``loadSchemaData(from:)`` implementation blocks the calling
 /// thread using a `DispatchSemaphore`. In async contexts, the async overload
 /// uses `withCheckedThrowingContinuation` to avoid blocking cooperative threads.
 ///
@@ -149,7 +156,7 @@ public struct RemoteXMLSchemaResourceResolver: XMLSchemaResourceResolver {
 
         if let sourceURL = sourceURL,
            let scheme = sourceURL.scheme,
-           (scheme == "http" || scheme == "https"),
+           scheme == "http" || scheme == "https",
            let base = URL(string: schemaLocation, relativeTo: sourceURL) {
             return base
         }
@@ -167,6 +174,8 @@ public struct RemoteXMLSchemaResourceResolver: XMLSchemaResourceResolver {
                 message: "RemoteXMLSchemaResourceResolver only loads http:// and https:// URLs."
             )
         }
+
+        resolverLogger.debug("Fetching remote schema", metadata: ["url": .string(url.absoluteString)])
 
         var request = URLRequest(url: url)
         request.timeoutInterval = timeout
@@ -198,6 +207,16 @@ public struct RemoteXMLSchemaResourceResolver: XMLSchemaResourceResolver {
         }.resume()
         semaphore.wait()
 
+        switch box.value {
+        case .success:
+            resolverLogger.debug("Remote schema fetched", metadata: ["url": .string(url.absoluteString)])
+        case .failure(let err):
+            resolverLogger.warning("Remote schema fetch failed", metadata: [
+                "url": .string(url.absoluteString),
+                "error": .string("\(err)")
+            ])
+        }
+
         return try box.value.get()
     }
 
@@ -212,6 +231,8 @@ public struct RemoteXMLSchemaResourceResolver: XMLSchemaResourceResolver {
             )
         }
 
+        resolverLogger.debug("Fetching remote schema (async)", metadata: ["url": .string(url.absoluteString)])
+
         return try await withCheckedThrowingContinuation { continuation in
             var request = URLRequest(url: url)
             request.timeoutInterval = timeout
@@ -220,10 +241,15 @@ public struct RemoteXMLSchemaResourceResolver: XMLSchemaResourceResolver {
                 if let data = data {
                     continuation.resume(returning: data)
                 } else {
-                    continuation.resume(throwing: XMLSchemaParsingError.resourceResolutionFailed(
+                    let err = XMLSchemaParsingError.resourceResolutionFailed(
                         schemaLocation: url.absoluteString,
                         message: error?.localizedDescription ?? "Unknown network error."
-                    ))
+                    )
+                    resolverLogger.warning("Async remote schema fetch failed", metadata: [
+                        "url": .string(url.absoluteString),
+                        "error": .string(error?.localizedDescription ?? "Unknown network error.")
+                    ])
+                    continuation.resume(throwing: err)
                 }
             }.resume()
         }
@@ -299,14 +325,28 @@ public struct CatalogXMLSchemaResourceResolver: XMLSchemaResourceResolver {
 
         systemMappings = system
         uriMappings = uri
+        resolverLogger.debug("Catalog loaded", metadata: [
+            "catalog": .string(catalogURL.path),
+            "systemMappings": .stringConvertible(system.count),
+            "uriMappings": .stringConvertible(uri.count)
+        ])
     }
 
     public func resolve(schemaLocation: String, relativeTo sourceURL: URL?) throws -> URL {
         if let mapped = systemMappings[schemaLocation] ?? uriMappings[schemaLocation] {
+            resolverLogger.debug("Catalog hit", metadata: [
+                "schemaLocation": .string(schemaLocation),
+                "resolvedPath": .string(mapped.path)
+            ])
             return mapped
         }
         let baseDirectory = catalogURL.deletingLastPathComponent()
-        return URL(fileURLWithPath: schemaLocation, relativeTo: baseDirectory).standardizedFileURL
+        let fallback = URL(fileURLWithPath: schemaLocation, relativeTo: baseDirectory).standardizedFileURL
+        resolverLogger.debug("Catalog miss — using relative fallback", metadata: [
+            "schemaLocation": .string(schemaLocation),
+            "fallbackPath": .string(fallback.path)
+        ])
+        return fallback
     }
 
     public func loadSchemaData(from url: URL) throws -> Data {
@@ -345,17 +385,30 @@ public struct CompositeXMLSchemaResourceResolver: XMLSchemaResourceResolver {
     }
 
     public func resolve(schemaLocation: String, relativeTo sourceURL: URL?) throws -> URL {
+        resolverLogger.debug("Composite resolving schema location", metadata: [
+            "schemaLocation": .string(schemaLocation),
+            "resolverCount": .stringConvertible(resolvers.count)
+        ])
         var lastError: Error = XMLSchemaParsingError.resourceResolutionFailed(
             schemaLocation: schemaLocation,
             message: "No resolvers configured."
         )
         for resolver in resolvers {
             do {
-                return try resolver.resolve(schemaLocation: schemaLocation, relativeTo: sourceURL)
+                let url = try resolver.resolve(schemaLocation: schemaLocation, relativeTo: sourceURL)
+                resolverLogger.debug("Composite resolver succeeded", metadata: [
+                    "schemaLocation": .string(schemaLocation),
+                    "resolvedURL": .string(url.absoluteString)
+                ])
+                return url
             } catch {
                 lastError = error
             }
         }
+        resolverLogger.warning("All resolvers failed for schema location", metadata: [
+            "schemaLocation": .string(schemaLocation),
+            "lastError": .string("\(lastError)")
+        ])
         throw lastError
     }
 
@@ -371,6 +424,10 @@ public struct CompositeXMLSchemaResourceResolver: XMLSchemaResourceResolver {
                 lastError = error
             }
         }
+        resolverLogger.warning("All resolvers failed to load schema data", metadata: [
+            "url": .string(url.absoluteString),
+            "lastError": .string("\(lastError)")
+        ])
         throw lastError
     }
 }

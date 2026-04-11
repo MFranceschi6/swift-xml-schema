@@ -1,4 +1,5 @@
 import Foundation
+import Logging
 import SwiftXMLCoder
 
 // MARK: - Field-level change
@@ -176,7 +177,14 @@ public struct XMLSchemaDiffer: Sendable {
     ///   - new: The updated schema set.
     /// - Returns: A ``XMLSchemaDiff`` describing all structural changes.
     public func diff(old: XMLNormalizedSchemaSet, new: XMLNormalizedSchemaSet) -> XMLSchemaDiff {
-        XMLSchemaDiff(
+        differLogger.debug("Computing schema diff", metadata: [
+            "oldComplexTypes": .stringConvertible(old.allComplexTypes.filter { !$0.isAnonymous }.count),
+            "newComplexTypes": .stringConvertible(new.allComplexTypes.filter { !$0.isAnonymous }.count),
+            "oldElements": .stringConvertible(old.allElements.count),
+            "newElements": .stringConvertible(new.allElements.count)
+        ])
+
+        let result = XMLSchemaDiff(
             complexTypeChanges: diffComponents(
                 old: old.allComplexTypes.filter { !$0.isAnonymous },
                 new: new.allComplexTypes.filter { !$0.isAnonymous },
@@ -211,6 +219,26 @@ public struct XMLSchemaDiffer: Sendable {
                 computeFieldChanges: diffElement
             )
         )
+
+        let totalChanges   = result.complexTypeChanges.count + result.simpleTypeChanges.count + result.elementChanges.count
+        let breakingCount  = result.breakingComplexTypeChanges.count
+            + result.breakingSimpleTypeChanges.count
+            + result.breakingElementChanges.count
+
+        if result.isEmpty {
+            differLogger.info("Diff complete: no changes detected")
+        } else if breakingCount > 0 {
+            differLogger.notice("Diff complete: breaking changes detected", metadata: [
+                "totalChanges": .stringConvertible(totalChanges),
+                "breakingChanges": .stringConvertible(breakingCount)
+            ])
+        } else {
+            differLogger.info("Diff complete: non-breaking changes only", metadata: [
+                "totalChanges": .stringConvertible(totalChanges)
+            ])
+        }
+
+        return result
     }
 
     // MARK: - Generic component diffing

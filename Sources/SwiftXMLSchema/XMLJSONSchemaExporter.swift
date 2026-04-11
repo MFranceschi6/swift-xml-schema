@@ -1,4 +1,5 @@
 import Foundation
+import Logging
 import SwiftXMLCoder
 
 // MARK: - Output model
@@ -129,15 +130,26 @@ public struct XMLJSONSchemaExporter: Sendable {
         _ schemaSet: XMLNormalizedSchemaSet,
         title: String? = nil
     ) -> XMLJSONSchemaDocument {
+        let totalComplex  = schemaSet.allComplexTypes.filter { !$0.isAnonymous }.count
+        let totalSimple   = schemaSet.allSimpleTypes.count
+        let totalElements = schemaSet.allElements.count
+        exporterLogger.debug("Starting JSON Schema export", metadata: [
+            "complexTypes": .stringConvertible(totalComplex),
+            "simpleTypes": .stringConvertible(totalSimple),
+            "elements": .stringConvertible(totalElements)
+        ])
+
         var defs: [String: JSONSchemaNode] = [:]
 
         for schema in schemaSet.schemas {
             for complexType in schema.complexTypes where !complexType.isAnonymous {
                 let key = defKey(name: complexType.name, namespaceURI: complexType.namespaceURI)
+                exporterLogger.trace("Exporting complexType", metadata: ["key": .string(key)])
                 defs[key] = node(for: complexType, in: schemaSet)
             }
             for simpleType in schema.simpleTypes {
                 let key = defKey(name: simpleType.name, namespaceURI: simpleType.namespaceURI)
+                exporterLogger.trace("Exporting simpleType", metadata: ["key": .string(key)])
                 defs[key] = node(for: simpleType)
             }
         }
@@ -163,6 +175,12 @@ public struct XMLJSONSchemaExporter: Sendable {
         }
 
         let docTitle = title ?? schemaSet.schemas.first?.targetNamespace
+        exporterLogger.info("JSON Schema export complete", metadata: [
+            "title": .string(docTitle ?? "(none)"),
+            "definitions": .stringConvertible(defs.count),
+            "properties": .stringConvertible(properties.count)
+        ])
+
         return XMLJSONSchemaDocument(
             schema: "https://json-schema.org/draft/2020-12/schema",
             title: docTitle,
