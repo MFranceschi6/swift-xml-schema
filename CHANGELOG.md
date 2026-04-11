@@ -4,7 +4,19 @@ All notable changes to `SwiftXMLSchema` will be documented in this file.
 
 The format follows [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
-## [Unreleased]
+## [1.0.0] — 2026-04-11
+
+### Added — Structured Logging
+
+- **`swift-log` integration** (`apple/swift-log ≥ 1.0.0`): all five public pipeline structs now accept an optional `logger: Logger` parameter at initialisation. No logger is required — the default label follows the `SwiftXMLSchema.<subsystem>` convention and is a no-op until the caller bootstraps a `LoggingSystem` backend.
+- **Per-struct injected loggers** (replaces any module-level globals): `XMLSchemaDocumentParser(logger:)`, `XMLSchemaNormalizer(logger:)`, `XMLSchemaDiffer(logger:)`, `XMLJSONSchemaExporter(logger:)`, `LocalFileXMLSchemaResourceResolver(logger:)`, `RemoteXMLSchemaResourceResolver(timeout:logger:)`, `CatalogXMLSchemaResourceResolver(catalogURL:logger:)`, `CompositeXMLSchemaResourceResolver(_:logger:)`. Callers who omit the parameter get the same labelled default; callers who want trace-level output for a single instance pass a pre-configured `Logger` without touching any global state.
+- **Five log subsystems with granular levels**:
+  - `parser` — `.debug` per document/schema load, `.info` parse summary, `.trace` per complex/simple type, `.warning` on cycle detection.
+  - `normalizer` — `.debug` per schema, `.info` completion summary, `.trace` per complex/simple type normalisation.
+  - `differ` — `.debug` diff start with component counts, `.info` no-change / non-breaking result, `.notice` breaking-changes result.
+  - `exporter` — `.debug` export start, `.trace` per complex/simple type exported, `.info` completion summary.
+  - `resolver` — `.debug` on every resolve/load hit, `.warning` on all-resolvers-failed.
+- **`XMLSchemaLoggingTests`** (11 cases): exercises all logging `@autoclosure` regions at `.trace` level via injected loggers to maintain llvm-cov coverage above the 90 % gate.
 
 ### Changed — Phase 1.0 Release Prep
 
