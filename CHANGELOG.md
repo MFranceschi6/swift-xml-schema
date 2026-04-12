@@ -4,6 +4,41 @@ All notable changes to `SwiftXMLSchema` will be documented in this file.
 
 The format follows [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
+## [Unreleased]
+
+### Added — XSD 1.1 features (Phase 1.1)
+
+- **`XMLSchemaAssertion`**: new public struct modelling `<xsd:assert>` — stores `test` (XPath expression), optional `xpathDefaultNamespace`, and `annotation`. Parsed by `XMLSchemaDocumentParser`, stored on `XMLSchemaComplexType` / `XMLSchemaAnonymousComplexType` (field `assertions: [XMLSchemaAssertion]`), and carried through the normalizer into `XMLNormalizedComplexType`.
+- **`XMLSchemaTypeAlternative`**: new public struct modelling `<xsd:alternative>` — stores optional `test` (XPath condition), `typeQName`, and `annotation`. Parsed from element children and stored on `XMLSchemaElement` (field `typeAlternatives: [XMLSchemaTypeAlternative]`).
+- **`XMLSchemaOpenContent`** + **`XMLSchemaOpenContentMode`**: new public types modelling `<xsd:openContent>` — `mode` (`.none` / `.interleave` / `.append`), `any: XMLSchemaWildcard?`, `appliesToEmpty`, and `annotation`. Stored on `XMLSchemaComplexType`, `XMLSchemaAnonymousComplexType`, and carried through to `XMLNormalizedComplexType`.
+- **`XMLSchema.defaultOpenContent`**: schema-level `<xsd:defaultOpenContent>` parsed and stored on `XMLSchema`.
+- **Validator awareness**: `XMLSchemaValidator` respects `openContent.mode != .none` — types with open content no longer flag extra child elements as errors (mode `.none` still rejects them).
+- **`XMLXSD11Tests`** (21 cases): parsing, normalisation, and validation tests for all new XSD 1.1 constructs.
+
+### Added — XMLSchemaValidator (Phase 1.1)
+
+- **`XMLSchemaValidator`**: new public struct that validates XML instance documents against an `XMLNormalizedSchemaSet`. Entry points: `validate(data:against:)` and `validate(url:against:)`. Returns `XMLSchemaValidationResult` with `isValid`, `errors`, and `warnings`.
+- **Validation coverage**: root element lookup, sequence/choice content model, occurrence bounds (`minOccurs`/`maxOccurs`), required/prohibited attributes, `anyAttribute` wildcard, simple type enumerations, string-length facets (`minLength`/`maxLength`/`length`), numeric range facets (`minInclusive`/`maxInclusive`), and built-in XSD scalar types (integer subtypes, boolean, date, dateTime, decimal).
+- **`XMLSchemaValidator(logger:)`**: injected-logger pattern; `.info` on completion summary, `.trace` per-element.
+- **`XMLSchemaValidatorTests`** (301 cases at launch, 334 total after Inferrer step): covers all validation paths including valid/invalid combinations for every facet and content model.
+
+### Added — XMLSchemaInferrer (Phase 1.1)
+
+- **`XMLSchemaInferrer`**: new public struct that walks one or more XML instance documents and produces a single-file XSD `Data` value. Entry points: `infer(data:)`, `infer(url:)`, `infer(contentsOf:)` (multi-document widening).
+- **Type inference**: infers `xsd:boolean`, `xsd:integer`, `xsd:decimal`, `xsd:date`, `xsd:dateTime`, falling back to `xsd:string`. Types are widened across multiple XML samples (e.g., integer + decimal → decimal).
+- **Structure inference**: occurrence bounds (`minOccurs`/`maxOccurs="unbounded"`), attribute use (`required` vs `optional`), `simpleContent` + attribute combinations.
+- **`XMLSchemaInferrer(logger:)`**: injected-logger pattern consistent with all other pipeline structs.
+- **`XMLWriter`**: extracted to shared internal `XMLWriter.swift` to avoid duplication between `XMLSchemaFlattener` and `XMLSchemaInferrer`.
+- **`XMLSchemaInferrerTests`** (282 cases): type widening, occurrence inference, attribute use, multi-document merging, round-trip smoke tests.
+
+### Added — XMLSchemaFlattener (Phase 1.1)
+
+- **`XMLSchemaFlattener`**: new public struct that converts an `XMLNormalizedSchemaSet` — potentially assembled from multiple XSD files with imports and includes — into a single self-contained XSD `Data` value. The output uses effective content from every normalized type (all model-group, attribute-group, and inheritance expansions pre-applied); no `<xsd:import>`, `<xsd:include>`, `<xsd:extension>`, or `<xsd:restriction>` elements are emitted.
+- **`XMLSchemaFlattenerError.ambiguousNamespace`**: thrown when the input set contains more than one distinct non-nil `targetNamespace` and no explicit namespace is provided to `flatten(_:targetNamespace:)`. The associated value lists the conflicting namespaces in sorted order.
+- **Namespace handling**: single namespace → auto-detected; multiple namespaces → explicit override via `flatten(_:targetNamespace:)`. Cross-namespace type references are serialised as bare local names with a `.warning`-level log message (documented v1 limitation).
+- **`XMLSchemaFlattener(logger:)`**: injected-logger pattern consistent with all other pipeline structs; `.debug` on start/completion, `.trace` per type/element, `.warning` on cross-namespace references.
+- **`XMLSchemaFlattenerTests`** (30 cases): round-trip tests for simple types (restriction/enumeration/list/union/facets), complex types (sequence, attributes, mixed, abstract, simpleContent, anyAttribute, wildcard, choice), top-level elements (nillable, default/fixed), occurrence bounds (unbounded), annotations, attribute groups, model groups, multiple schemas, ambiguous-namespace error, explicit-namespace override, and logger autoclosure coverage.
+
 ## [1.0.0] — 2026-04-11
 
 ### Added — Structured Logging

@@ -105,6 +105,9 @@ blocking threads with `URLSession`.
 
 ## Next Steps
 
+- Validate XML documents against the schema: <doc:Validation>
+- Flatten a multi-file schema into one XSD: <doc:SchemaFlattening>
+- Infer a schema from XML instances: <doc:SchemaInference>
 - Explore the full component model: <doc:WorkingWithTheComponentModel>
 - Walk the schema tree with a visitor: <doc:VisitorAndWalker>
 - Export to JSON Schema: <doc:JSONSchemaExport>

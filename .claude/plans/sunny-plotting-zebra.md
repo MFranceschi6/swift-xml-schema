@@ -62,70 +62,53 @@ Tutti e 5 gli item erano già implementati nel bootstrap. Archiviato in `.claude
 
 ---
 
-## Phase 0.4 — Redefine, Mixed Content, Identity Constraints (Swift 5.7–5.9)
+## Phase 0.4 — Redefine, Mixed Content, Identity Constraints (Swift 5.7–5.9) ✅ COMPLETATA
 
 **Obiettivo:** Completezza XSD 1.0 al pari di Java e .NET.
 
-| Item | Dettaglio |
-|------|-----------|
-| **`<xsd:redefine>`** | Parsing come variante di include con modifiche tipo/gruppo. Il normalizer applica le ridefinizioni prima della normalizzazione. |
-| **Mixed content** | `isMixed: Bool` su complexType e normalizzati. Codegen emette tipi che alternano text node e child element. Comune in document-oriented XML (XHTML in SOAP). |
-| **Identity constraints** | Parse `<xsd:key>`, `<xsd:keyref>`, `<xsd:unique>` in `XMLSchemaIdentityConstraint`. Attach a elements. Necessario per validazione runtime (Phase 1.1+), utile già ora come metadati. |
-| **`<xsd:notation>`** | Minimale: parse e store per completezza. |
+| Item | Stato |
+|------|-------|
+| **`<xsd:redefine>`** | ✅ — `applyRedefine` in `XMLSchemaDocumentParser+Logic.swift` |
+| **Mixed content** | ✅ — `isMixed: Bool` su `XMLComplexType` e `XMLNormalizedComplexType`, propagato dal normalizer |
+| **Identity constraints** | ✅ — `XMLSchemaIdentityConstraint` (kind: key/keyref/unique), parsato e attaccato a elementi normalizzati |
+| **`<xsd:notation>`** | ✅ — `XMLSchemaNotation` parsato e storato in `XMLSchema.notations` |
 
-**Sblocca downstream:** Compliance XSD 1.0 completa. A questo punto SwiftXMLSchema è al pari di Python xmlschema per parsing/modello.
-
----
-
-## Phase 0.5 — Concurrency e Typed Throws (Swift 6.0)
-
-**Obiettivo:** Adozione di strict concurrency e typed throws. Il codebase è ben posizionato (tipi già Sendable).
-
-| Item | Dettaglio |
-|------|-----------|
-| **Typed throws** | `throws(XMLSchemaParsingError)` su API pubbliche parser e normalizer. Il manifest 6.0 già dichiara `.v6`. Manifest ≤5.9 mantengono `throws` untyped via `#if swift(>=6.0)`. |
-| **Async resource resolution** | Varianti `async` su `XMLSchemaResourceResolver`. `parse(url:) async throws`. Remote resolver usa `URLSession.data(from:)`. |
-| **Concurrent multi-schema parsing** | Import indipendenti parsati in parallelo con `TaskGroup` (attualmente sequenziale in `appendSchemaRecursively`). Python xmlschema fa lazy loading per schemi grandi; noi facciamo concurrent loading. |
-| **Sendable audit** | Verifica con strict concurrency checking. Documentare. |
-
-**Sblocca downstream:** CodeGen CLI parsa in parallelo. SOAP risolve WSDL import concorrentemente. Typed throws → switch esaustivo per i caller.
+**Completata senza essere stata segnata — scoperto durante audit 2026-04-12.**
 
 ---
 
-## Phase 0.6 — Build Tool Plugin e Schema Caching (Swift 5.6+)
+## Phase 0.5 — Concurrency e Typed Throws (Swift 6.0) ✅ COMPLETATA
 
-**Obiettivo:** Integrazione SPM per parsing a build-time. Ispirato al modello .NET `XmlSchemaSet.Compile()` che produce un artefatto compilato riusabile.
-
-| Item | Dettaglio |
-|------|-----------|
-| **SPM BuildToolPlugin** | Scansiona `.xsd` nelle risorse target → produce `XMLNormalizedSchemaSet` serializzato come JSON. Consumato dal plugin di CodeGen. Il plugin vive in questo repo perché il parsing è responsabilità di questa libreria. |
-| **Schema caching** | Cache content-hash-based di `XMLSchemaSet` e `XMLNormalizedSchemaSet`. Aggiungere `Codable` ai tipi normalizzati che ne mancano. Come .NET compila il schema set una volta e lo riusa. |
-| **Schema fingerprinting** | Hash stabile di `XMLNormalizedSchemaSet` per invalidazione cache e per codegen (rigenerare solo se cambiato). |
-
-**Sblocca downstream:** Build incrementali veloci. CodeGen evita re-parsing ad ogni build.
+| Item | Stato |
+|------|-------|
+| `throws(XMLSchemaParsingError)` su parser e normalizer | ✅ — `XMLSchemaDocumentParser.swift`, `XMLSchemaNormalizer.swift` |
+| Varianti `async` su `XMLSchemaResourceResolver` | ✅ — protocol + `RemoteXMLSchemaResourceResolver` |
+| `parse(url:) async throws` | ✅ — `XMLSchemaDocumentParser.swift` |
+| Concurrent multi-schema parsing via `TaskGroup` | ✅ — `appendSchemaRecursivelyAsync` con `withThrowingTaskGroup` |
+| Sendable audit + strict concurrency | ✅ — `swiftLanguageModes: [.v6]` in `Package@swift-6.0.swift` |
 
 ---
 
-## Phase 0.7 — Macro (Swift 5.9)
+## Phase 0.6 — Build Tool Plugin e Schema Caching (Swift 5.6+) ✅ COMPLETATA
 
-**Obiettivo:** Adottare macro dove hanno valore genuino. Non tutto merita una macro.
+| Item | Stato |
+|------|-------|
+| SPM `BuildToolPlugin` (`.xsd` → JSON normalizzato a build-time) | ✅ — `Plugins/XMLSchemaPlugin/`, dichiarato in `Package@swift-5.6.swift`+ |
+| `Codable` su `XMLNormalizedSchemaSet` | ✅ — `XMLNormalizedSchemaSet+Codable.swift` |
+| SHA-256 fingerprinting (`fingerprint: String`) | ✅ — `XMLNormalizedSchemaSet+Codable.swift:107` |
 
-### Non raccomandato (e perché)
+---
+
+## Phase 0.7 — Macro (Swift 5.9) — RIFIUTATA
+
+Nessuna macro implementata. Motivazioni:
 
 | Candidato | Motivo per esclusione |
 |-----------|----------------------|
-| `@SchemaValidated` compile-time | Gli XSD sono dati runtime (file su disco). Una macro non può leggere/parsare un XSD a compilazione. Il build-tool plugin (0.6) è il meccanismo corretto. |
-| Schema-driven type synthesis macro | Generare tipi da XSD è code generation, non macro. Le macro operano su nodi AST, non importano un modello schema. CodeGen + SPM plugin è lo strumento giusto. JAXB usa annotation processing, non macro — il concetto è lo stesso. |
-| Parameter packs per composizione variadic | La composizione schema è data-driven, non variadic nel senso generico. `XMLSchemaSet.merging(_:)` è l'API giusta. |
-
-### Raccomandato
-
-| Macro | Valore |
-|-------|--------|
-| **`#xsdQName("tns:Order", namespace: "urn:types")`** | Expression macro: valida formato QName a compile-time (prefix:localName, componenti non vuoti). Quality-of-life. |
-| **`@XMLSchemaVisitorDefaults`** | Extension macro che sintetizza implementazioni no-op di default per tutti i metodi di `XMLSchemaVisitor`, così i consumer overridano solo quello che serve. |
-
-**Nota chiave:** Le macro non sono lo strumento giusto per code generation XSD-driven. Il plugin SPM lo è. Questo è coerente con come Java (JAXB = annotation processor + tool), .NET (XmlSchemaClassGenerator = tool esterno), e Python (xmlschema = runtime library) gestiscono la questione.
+| `#xsdQName(...)` | `swift-xml-coder` espone già una macro equivalente per QName. Duplicare sarebbe overhead senza valore. |
+| `@XMLSchemaVisitorDefaults` | Non necessario: `XMLSchemaVisitor` espone già implementazioni no-op di default come extension. I consumer overridano solo i metodi di interesse. |
+| `@SchemaValidated` compile-time | XSD sono dati runtime — una macro non può leggerli. Il build-tool plugin (0.6) è il meccanismo corretto. |
+| Schema-driven type synthesis | Code generation, non macro. CodeGen + SPM plugin è lo strumento giusto. |
 
 ---
 
@@ -158,16 +141,17 @@ Tutti e 5 gli item erano già implementati nel bootstrap. Archiviato in `.claude
 
 ---
 
-## Phase 1.1+ — Feature Avanzate (Swift 6.1+, speculativo)
+## Phase 1.1 — Feature Avanzate (Swift 6.1+) ✅ COMPLETATA (2026-04-12)
 
-| Item | Note |
-|------|------|
-| **XML instance validation** | Validare documenti XML a runtime contro lo schema parsato. Ispirato a .NET PSVI (Post-Schema-Validation Infoset): dopo validazione, ogni nodo è annotato con il tipo schema risolto. Potrebbe essere target separato `SwiftXMLSchemaValidation`. |
-| **Schema inference da XML** | Come .NET `XmlSchemaInference`: genera XSD da istanze XML. Utile per reverse-engineering quando lo schema non è disponibile. |
-| **XSD 1.1 assertions** (`<xsd:assert>`) | Richiede valutazione XPath, disponibile in SwiftXMLCoder v2 via `XMLDocument.xpathNodes`. |
-| **XSD 1.1 type alternatives** | `<xsd:alternative>` per type assignment condizionale. |
-| **XSD 1.1 open content** | `<xsd:openContent>`, `<xsd:defaultOpenContent>`. |
-| **Streaming/incremental parsing** | Per schemi molto grandi, usare `XMLStreamParser` di SwiftXMLCoder invece di DOM. Ottimizzazione, non correttezza. |
+| Item | Stato |
+|------|-------|
+| **XML instance validation** | ✅ — `XMLSchemaValidator` (commit 7fe5746) |
+| **Schema inference da XML** | ✅ — `XMLSchemaInferrer` (commit 41990bb) |
+| **Schema flattening** | ✅ — `XMLSchemaFlattener` (commit 970c2ce) |
+| **XSD 1.1 assertions** (`<xsd:assert>`) | ✅ — `XMLSchemaAssertion`, 21 test (commit 4461614) |
+| **XSD 1.1 type alternatives** | ✅ — `XMLSchemaTypeAlternative` (commit 4461614) |
+| **XSD 1.1 open content** | ✅ — `XMLSchemaOpenContent` + `defaultOpenContent` + validator awareness (commit 4461614) |
+| **Streaming/incremental parsing** | Rimandato — ottimizzazione non urgente |
 
 `~Copyable` e `InlineArray` (6.0/6.1) non sono applicabili: i tipi schema sono naturalmente copyable e di lunghezza variabile.
 

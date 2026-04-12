@@ -1,18 +1,18 @@
 # ``SwiftXMLSchema``
 
-Parse XSD documents, assemble schema sets, and navigate the normalised component model.
+Parse XSD documents, assemble schema sets, validate XML instances, and navigate the normalised component model.
 
 ## Overview
 
 SwiftXMLSchema is a Swift Package Manager library for reading W3C XML Schema (XSD) files and
 assembling them into a strongly-typed, navigable component model. It is standalone — no SOAP,
-no WSDL, no runtime XML instance validation.
+no WSDL.
 
 **Typical pipeline:**
 
 1. Feed raw XSD data into ``XMLSchemaDocumentParser`` → ``XMLSchemaSet``
 2. Normalise with ``XMLSchemaNormalizer`` → ``XMLNormalizedSchemaSet``
-3. Query, walk, diff, or export the normalised set
+3. Query, walk, diff, export — or validate XML instances against the schema
 
 ### Quick Start
 
@@ -64,6 +64,9 @@ let normalized = try XMLSchemaNormalizer().normalize(schemaSet)
 | ``XMLSchemaDocumentParser`` | Parses raw XSD bytes into a raw ``XMLSchemaSet`` |
 | ``XMLSchemaNormalizer`` | Resolves references, computes effective content → ``XMLNormalizedSchemaSet`` |
 | ``XMLNormalizedSchemaSet`` | O(1)-indexed component model: types, elements, attributes, groups |
+| ``XMLSchemaValidator`` | Validates XML instance documents against a normalised schema set |
+| ``XMLSchemaFlattener`` | Converts a multi-file schema set into a single self-contained XSD |
+| ``XMLSchemaInferrer`` | Infers an XSD schema from one or more XML instance documents |
 | ``XMLSchemaWalker`` | Depth-first traversal driven by an ``XMLSchemaVisitor`` |
 | ``XMLSchemaDiffer`` | Structural diff between two schema sets |
 | ``XMLJSONSchemaExporter`` | Converts a normalised schema set to JSON Schema draft 2020-12 |
@@ -77,6 +80,25 @@ let normalized = try XMLSchemaNormalizer().normalize(schemaSet)
 - ``XMLSchemaNormalizer``
 - ``XMLSchemaSet``
 - ``XMLNormalizedSchemaSet``
+
+### Validation
+
+- <doc:Validation>
+- ``XMLSchemaValidator``
+- ``XMLSchemaValidationResult``
+- ``XMLSchemaValidationDiagnostic``
+- ``XMLSchemaValidationSeverity``
+
+### Schema Flattening
+
+- <doc:SchemaFlattening>
+- ``XMLSchemaFlattener``
+- ``XMLSchemaFlattenerError``
+
+### Schema Inference
+
+- <doc:SchemaInference>
+- ``XMLSchemaInferrer``
 
 ### Component Model
 
@@ -111,6 +133,13 @@ let normalized = try XMLSchemaNormalizer().normalize(schemaSet)
 - ``XMLSchemaDiffer``
 - ``XMLSchemaDiff``
 - ``XMLSchemaStatistics``
+
+### XSD 1.1 Constructs
+
+- ``XMLSchemaAssertion``
+- ``XMLSchemaTypeAlternative``
+- ``XMLSchemaOpenContent``
+- ``XMLSchemaOpenContentMode``
 
 ### Diagnostics and Error Model
 
