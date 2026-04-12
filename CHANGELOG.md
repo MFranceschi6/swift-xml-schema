@@ -4,6 +4,16 @@ All notable changes to `SwiftXMLSchema` will be documented in this file.
 
 The format follows [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
+## [Unreleased]
+
+### Added — XMLSchemaFlattener (Phase 1.1)
+
+- **`XMLSchemaFlattener`**: new public struct that converts an `XMLNormalizedSchemaSet` — potentially assembled from multiple XSD files with imports and includes — into a single self-contained XSD `Data` value. The output uses effective content from every normalized type (all model-group, attribute-group, and inheritance expansions pre-applied); no `<xsd:import>`, `<xsd:include>`, `<xsd:extension>`, or `<xsd:restriction>` elements are emitted.
+- **`XMLSchemaFlattenerError.ambiguousNamespace`**: thrown when the input set contains more than one distinct non-nil `targetNamespace` and no explicit namespace is provided to `flatten(_:targetNamespace:)`. The associated value lists the conflicting namespaces in sorted order.
+- **Namespace handling**: single namespace → auto-detected; multiple namespaces → explicit override via `flatten(_:targetNamespace:)`. Cross-namespace type references are serialised as bare local names with a `.warning`-level log message (documented v1 limitation).
+- **`XMLSchemaFlattener(logger:)`**: injected-logger pattern consistent with all other pipeline structs; `.debug` on start/completion, `.trace` per type/element, `.warning` on cross-namespace references.
+- **`XMLSchemaFlattenerTests`** (30 cases): round-trip tests for simple types (restriction/enumeration/list/union/facets), complex types (sequence, attributes, mixed, abstract, simpleContent, anyAttribute, wildcard, choice), top-level elements (nillable, default/fixed), occurrence bounds (unbounded), annotations, attribute groups, model groups, multiple schemas, ambiguous-namespace error, explicit-namespace override, and logger autoclosure coverage.
+
 ## [1.0.0] — 2026-04-11
 
 ### Added — Structured Logging
