@@ -150,8 +150,8 @@ final class XMLSchemaFlattenerTests: XCTestCase {
         """
         let result = try roundTrip(xsd: xsd)
         let order = try XCTUnwrap(result.complexType(named: "Order", namespaceURI: "urn:ct"))
-        let names = order.effectiveContent.compactMap {
-            if case .element(let use) = $0 { return use.name }
+        let names = order.effectiveContent.compactMap { node -> String? in
+            if case .element(let use) = node { return use.name }
             return nil
         }
         XCTAssertEqual(names, ["id", "qty"])
@@ -264,8 +264,8 @@ final class XMLSchemaFlattenerTests: XCTestCase {
         XCTAssertTrue(xml.contains("<xsd:choice>"))
         let result = try roundTrip(xsd: xsd)
         let payment = try XCTUnwrap(result.complexType(named: "Payment", namespaceURI: "urn:ct"))
-        let choiceNames = payment.effectiveContent.compactMap {
-            if case .choice(let g) = $0 { return g.elements.map(\.name) }
+        let choiceNames: [String] = payment.effectiveContent.compactMap { node -> [String]? in
+            if case .choice(let g) = node { return g.elements.map(\.name) }
             return nil
         }.flatMap { $0 }
         XCTAssertTrue(choiceNames.contains("creditCard"))
