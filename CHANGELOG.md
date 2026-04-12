@@ -4,7 +4,7 @@ All notable changes to `SwiftXMLSchema` will be documented in this file.
 
 The format follows [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
-## [Unreleased]
+## [1.1.0] — 2026-04-12
 
 ### Added — XSD 1.1 features (Phase 1.1)
 
