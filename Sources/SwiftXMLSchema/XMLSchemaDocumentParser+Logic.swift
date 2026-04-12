@@ -210,7 +210,8 @@ extension XMLSchemaDocumentParser {
             attributeGroups: patchedAttributeGroups,
             modelGroups: patchedModelGroups,
             complexTypes: patchedComplexTypes,
-            simpleTypes: patchedSimpleTypes
+            simpleTypes: patchedSimpleTypes,
+            defaultOpenContent: schema.defaultOpenContent
         )
     }
 
@@ -316,6 +317,11 @@ extension XMLSchemaDocumentParser {
             .filter { $0.name == "simpleType" }
             .map { try parseSimpleType($0, sourceURL: sourceURL, namespaceMappings: namespaceMappings) }
 
+        // XSD 1.1: schema-level defaultOpenContent
+        let defaultOpenContent = try schemaNode.children()
+            .first(where: { $0.name == "defaultOpenContent" })
+            .map { try parseOpenContentNode($0) }
+
         return XMLSchema(
             annotation: annotation,
             targetNamespace: targetNamespace,
@@ -328,7 +334,8 @@ extension XMLSchemaDocumentParser {
             attributeGroups: attributeGroups,
             modelGroups: modelGroups,
             complexTypes: complexTypes,
-            simpleTypes: simpleTypes
+            simpleTypes: simpleTypes,
+            defaultOpenContent: defaultOpenContent
         )
     }
 
@@ -376,6 +383,10 @@ extension XMLSchemaDocumentParser {
             from: elementNode.children(),
             namespaceMappings: namespaceMappings
         )
+        let typeAlternatives = try parseTypeAlternatives(
+            from: elementNode.children(),
+            namespaceMappings: namespaceMappings
+        )
 
         return XMLSchemaElement(
             annotation: annotation,
@@ -390,6 +401,7 @@ extension XMLSchemaDocumentParser {
             isAbstract: isAbstract,
             substitutionGroup: substitutionGroup,
             identityConstraints: identityConstraints,
+            typeAlternatives: typeAlternatives,
             inlineComplexType: inlineComplexType,
             inlineSimpleType: inlineSimpleType
         )
@@ -495,6 +507,9 @@ extension XMLSchemaDocumentParser {
         let isMixed = parseBooleanAttribute(named: "mixed", on: complexTypeNode)
             || (complexContentNode.map { parseBooleanAttribute(named: "mixed", on: $0) } ?? false)
 
+        let assertions = parseAssertions(from: complexTypeChildren + complexDerivedChildren)
+        let openContent = try parseOpenContent(from: complexTypeChildren + complexDerivedChildren)
+
         return XMLSchemaComplexType(
             annotation: annotation,
             name: name,
@@ -510,7 +525,9 @@ extension XMLSchemaDocumentParser {
             attributes: attributes,
             attributeRefs: attributeRefs,
             attributeGroupRefs: attributeGroupRefs,
-            anyAttribute: anyAttribute
+            anyAttribute: anyAttribute,
+            assertions: assertions,
+            openContent: openContent
         )
     }
 
@@ -563,6 +580,9 @@ extension XMLSchemaDocumentParser {
         let isMixed = parseBooleanAttribute(named: "mixed", on: complexTypeNode)
             || (complexContentNode.map { parseBooleanAttribute(named: "mixed", on: $0) } ?? false)
 
+        let assertions = parseAssertions(from: complexTypeChildren + complexDerivedChildren)
+        let openContent = try parseOpenContent(from: complexTypeChildren + complexDerivedChildren)
+
         return XMLSchemaAnonymousComplexType(
             annotation: annotation,
             baseQName: try resolveQName(
@@ -585,7 +605,9 @@ extension XMLSchemaDocumentParser {
             attributes: attributes,
             attributeRefs: attributeRefs,
             attributeGroupRefs: attributeGroupRefs,
-            anyAttribute: anyAttribute
+            anyAttribute: anyAttribute,
+            assertions: assertions,
+            openContent: openContent
         )
     }
 
@@ -1400,6 +1422,60 @@ extension XMLSchemaDocumentParser {
             return false
         }
         return value == "true" || value == "1"
+    }
+
+    // MARK: - XSD 1.1 parse helpers
+
+    /// Parses `<xsd:assert>` children of `node` into ``XMLSchemaAssertion`` values.
+    private func parseAssertions(from nodes: [XMLCoderNode]) -> [XMLSchemaAssertion] {
+        nodes.filter { $0.name == "assert" }.compactMap { assertNode -> XMLSchemaAssertion? in
+            guard let test = normalized(assertNode.attribute(named: "test")) else { return nil }
+            return XMLSchemaAssertion(
+                test: test,
+                xpathDefaultNamespace: normalized(assertNode.attribute(named: "xpathDefaultNamespace")),
+                annotation: parseAnnotation(from: assertNode)
+            )
+        }
+    }
+
+    /// Parses an `<xsd:openContent>` or `<xsd:defaultOpenContent>` node into an ``XMLSchemaOpenContent`` value.
+    private func parseOpenContentNode(_ ocNode: XMLCoderNode) throws -> XMLSchemaOpenContent {
+        let modeString = normalized(ocNode.attribute(named: "mode")) ?? "interleave"
+        let mode = XMLSchemaOpenContentMode(rawValue: modeString) ?? .interleave
+        let appliesToEmpty = parseBooleanAttribute(named: "appliesToEmpty", on: ocNode)
+        let anyNode = ocNode.children().first(where: { $0.name == "any" })
+        let wildcard = try anyNode.map { try parseWildcard($0, kind: .element) }
+        return XMLSchemaOpenContent(
+            mode: mode,
+            any: wildcard,
+            appliesToEmpty: appliesToEmpty,
+            annotation: parseAnnotation(from: ocNode)
+        )
+    }
+
+    /// Parses the first `<xsd:openContent>` child among `nodes`.
+    private func parseOpenContent(from nodes: [XMLCoderNode]) throws -> XMLSchemaOpenContent? {
+        guard let ocNode = nodes.first(where: { $0.name == "openContent" }) else { return nil }
+        return try parseOpenContentNode(ocNode)
+    }
+
+    /// Parses `<xsd:alternative>` children of `node` into ``XMLSchemaTypeAlternative`` values.
+    private func parseTypeAlternatives(
+        from nodes: [XMLCoderNode],
+        namespaceMappings: [String: String]
+    ) throws -> [XMLSchemaTypeAlternative] {
+        try nodes.filter { $0.name == "alternative" }.map { altNode in
+            let typeQName = try resolveQName(
+                fromQualifiedName: altNode.attribute(named: "type"),
+                namespaceMappings: namespaceMappings,
+                context: "alternative type"
+            )
+            return XMLSchemaTypeAlternative(
+                test: normalized(altNode.attribute(named: "test")),
+                typeQName: typeQName,
+                annotation: parseAnnotation(from: altNode)
+            )
+        }
     }
 
     private func parseAnnotation(from node: XMLCoderNode) -> XMLSchemaAnnotation? {

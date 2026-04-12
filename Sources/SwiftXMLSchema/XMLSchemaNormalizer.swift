@@ -311,6 +311,10 @@ public struct XMLNormalizedComplexType: Sendable, Equatable, Codable {
     public let isAbstract: Bool
     public let isMixed: Bool
     public let isAnonymous: Bool
+    /// XSD 1.1: XPath assertions (`<xsd:assert>`).
+    public let assertions: [XMLSchemaAssertion]
+    /// XSD 1.1: open content declaration (`<xsd:openContent>`).
+    public let openContent: XMLSchemaOpenContent?
 
     public var declaredSequence: [XMLNormalizedElementUse] {
         declaredContent.compactMap { node in
@@ -372,7 +376,9 @@ public struct XMLNormalizedComplexType: Sendable, Equatable, Codable {
         anyAttribute: XMLSchemaWildcard?,
         isAbstract: Bool,
         isMixed: Bool = false,
-        isAnonymous: Bool
+        isAnonymous: Bool,
+        assertions: [XMLSchemaAssertion] = [],
+        openContent: XMLSchemaOpenContent? = nil
     ) {
         self.componentID = componentID
         self.annotation = annotation
@@ -392,6 +398,8 @@ public struct XMLNormalizedComplexType: Sendable, Equatable, Codable {
         self.isAbstract = isAbstract
         self.isMixed = isMixed
         self.isAnonymous = isAnonymous
+        self.assertions = assertions
+        self.openContent = openContent
     }
 }
 
@@ -1104,7 +1112,9 @@ private extension XMLSchemaNormalizer {
                 attributes: rewrittenAttributes,
                 attributeRefs: complexType.attributeRefs,
                 attributeGroupRefs: complexType.attributeGroupRefs,
-                anyAttribute: complexType.anyAttribute
+                anyAttribute: complexType.anyAttribute,
+                assertions: complexType.assertions,
+                openContent: complexType.openContent
             )
         }
 
@@ -1246,7 +1256,9 @@ private extension XMLSchemaNormalizer {
                         attributes: rewrittenAnonymous.attributes,
                         attributeRefs: rewrittenAnonymous.attributeRefs,
                         attributeGroupRefs: rewrittenAnonymous.attributeGroupRefs,
-                        anyAttribute: rewrittenAnonymous.anyAttribute
+                        anyAttribute: rewrittenAnonymous.anyAttribute,
+                        assertions: rewrittenAnonymous.assertions,
+                        openContent: rewrittenAnonymous.openContent
                     )
                 )
                 rewrittenElement = XMLSchemaElement(
@@ -1337,7 +1349,9 @@ private extension XMLSchemaNormalizer {
                 attributes: rewrittenAttributes,
                 attributeRefs: complexType.attributeRefs,
                 attributeGroupRefs: complexType.attributeGroupRefs,
-                anyAttribute: complexType.anyAttribute
+                anyAttribute: complexType.anyAttribute,
+                assertions: complexType.assertions,
+                openContent: complexType.openContent
             )
         }
 
@@ -1559,7 +1573,9 @@ private extension XMLSchemaNormalizer {
             anyAttribute: complexType.anyAttribute,
             isAbstract: complexType.isAbstract,
             isMixed: complexType.isMixed,
-            isAnonymous: contextPath.contains("Anonymous")
+            isAnonymous: contextPath.contains("Anonymous"),
+            assertions: complexType.assertions,
+            openContent: complexType.openContent
         )
     }
 

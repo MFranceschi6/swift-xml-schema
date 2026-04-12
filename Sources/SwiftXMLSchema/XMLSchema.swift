@@ -136,6 +136,79 @@ public enum XMLSchemaWildcardProcessContents: String, Sendable, Equatable, Codab
     case skip
 }
 
+// MARK: - XSD 1.1 open content
+
+/// How additional elements are allowed to interleave with the declared content (XSD 1.1).
+public enum XMLSchemaOpenContentMode: String, Sendable, Equatable, Codable {
+    /// No additional elements are allowed. Equivalent to absent `openContent`.
+    case none
+    /// Additional elements may appear between, before, or after declared elements.
+    case interleave
+    /// Additional elements may appear only after the last declared element.
+    case append
+}
+
+/// Models `<xsd:openContent>` (XSD 1.1) — permits additional elements beyond the declared sequence.
+public struct XMLSchemaOpenContent: Sendable, Equatable, Codable {
+    public let mode: XMLSchemaOpenContentMode
+    /// The wildcard that governs which additional elements are accepted.
+    public let any: XMLSchemaWildcard?
+    /// Whether the open content applies when the element has no content at all (`appliesToEmpty`).
+    public let appliesToEmpty: Bool
+    public let annotation: XMLSchemaAnnotation?
+
+    public init(
+        mode: XMLSchemaOpenContentMode = .interleave,
+        any: XMLSchemaWildcard? = nil,
+        appliesToEmpty: Bool = false,
+        annotation: XMLSchemaAnnotation? = nil
+    ) {
+        self.mode = mode
+        self.any = any
+        self.appliesToEmpty = appliesToEmpty
+        self.annotation = annotation
+    }
+}
+
+// MARK: - XSD 1.1 assertions
+
+/// Models `<xsd:assert>` (XSD 1.1) — an XPath-based assertion attached to a complex type.
+public struct XMLSchemaAssertion: Sendable, Equatable, Codable {
+    public let test: String
+    public let xpathDefaultNamespace: String?
+    public let annotation: XMLSchemaAnnotation?
+
+    public init(
+        test: String,
+        xpathDefaultNamespace: String? = nil,
+        annotation: XMLSchemaAnnotation? = nil
+    ) {
+        self.test = test
+        self.xpathDefaultNamespace = xpathDefaultNamespace
+        self.annotation = annotation
+    }
+}
+
+// MARK: - XSD 1.1 type alternatives
+
+/// Models `<xsd:alternative>` (XSD 1.1) — a conditional type assignment on an element.
+public struct XMLSchemaTypeAlternative: Sendable, Equatable, Codable {
+    /// XPath test expression. `nil` on the fallback (last) alternative.
+    public let test: String?
+    public let typeQName: XMLQualifiedName?
+    public let annotation: XMLSchemaAnnotation?
+
+    public init(
+        test: String? = nil,
+        typeQName: XMLQualifiedName? = nil,
+        annotation: XMLSchemaAnnotation? = nil
+    ) {
+        self.test = test
+        self.typeQName = typeQName
+        self.annotation = annotation
+    }
+}
+
 /// How an attribute may appear on an element.
 public enum XMLSchemaAttributeUseKind: String, Sendable, Equatable, Codable {
     /// The attribute must appear.
@@ -242,6 +315,10 @@ public struct XMLSchemaAnonymousComplexType: Sendable, Equatable {
     public let attributeRefs: [XMLSchemaAttributeReference]
     public let attributeGroupRefs: [XMLQualifiedName]
     public let anyAttribute: XMLSchemaWildcard?
+    /// XSD 1.1: XPath assertions (`<xsd:assert>`).
+    public let assertions: [XMLSchemaAssertion]
+    /// XSD 1.1: open content declaration (`<xsd:openContent>`).
+    public let openContent: XMLSchemaOpenContent?
 
     public var sequence: [XMLSchemaElement] {
         content.compactMap { node in
@@ -287,7 +364,9 @@ public struct XMLSchemaAnonymousComplexType: Sendable, Equatable {
         attributes: [XMLSchemaAttribute],
         attributeRefs: [XMLSchemaAttributeReference] = [],
         attributeGroupRefs: [XMLQualifiedName] = [],
-        anyAttribute: XMLSchemaWildcard? = nil
+        anyAttribute: XMLSchemaWildcard? = nil,
+        assertions: [XMLSchemaAssertion] = [],
+        openContent: XMLSchemaOpenContent? = nil
     ) {
         self.annotation = annotation
         self.baseQName = baseQName
@@ -306,6 +385,8 @@ public struct XMLSchemaAnonymousComplexType: Sendable, Equatable {
         self.attributeRefs = attributeRefs
         self.attributeGroupRefs = attributeGroupRefs
         self.anyAttribute = anyAttribute
+        self.assertions = assertions
+        self.openContent = openContent
     }
 
     private static func makeContent(
@@ -334,6 +415,8 @@ public struct XMLSchema: Sendable, Equatable {
     public let modelGroups: [XMLSchemaModelGroup]
     public let complexTypes: [XMLSchemaComplexType]
     public let simpleTypes: [XMLSchemaSimpleType]
+    /// XSD 1.1: schema-level default open content (`<xsd:defaultOpenContent>`).
+    public let defaultOpenContent: XMLSchemaOpenContent?
 
     public init(
         annotation: XMLSchemaAnnotation? = nil,
@@ -347,7 +430,8 @@ public struct XMLSchema: Sendable, Equatable {
         attributeGroups: [XMLSchemaAttributeGroup] = [],
         modelGroups: [XMLSchemaModelGroup] = [],
         complexTypes: [XMLSchemaComplexType],
-        simpleTypes: [XMLSchemaSimpleType]
+        simpleTypes: [XMLSchemaSimpleType],
+        defaultOpenContent: XMLSchemaOpenContent? = nil
     ) {
         self.annotation = annotation
         self.targetNamespace = targetNamespace
@@ -361,6 +445,7 @@ public struct XMLSchema: Sendable, Equatable {
         self.modelGroups = modelGroups
         self.complexTypes = complexTypes
         self.simpleTypes = simpleTypes
+        self.defaultOpenContent = defaultOpenContent
     }
 }
 
@@ -395,6 +480,8 @@ public struct XMLSchemaElement: Sendable, Equatable {
     public let isAbstract: Bool
     public let substitutionGroup: XMLQualifiedName?
     public let identityConstraints: [XMLSchemaIdentityConstraint]
+    /// XSD 1.1: conditional type alternatives (`<xsd:alternative>`).
+    public let typeAlternatives: [XMLSchemaTypeAlternative]
     public let inlineComplexType: XMLSchemaAnonymousComplexType?
     public let inlineSimpleType: XMLSchemaAnonymousSimpleType?
 
@@ -419,6 +506,7 @@ public struct XMLSchemaElement: Sendable, Equatable {
         isAbstract: Bool = false,
         substitutionGroup: XMLQualifiedName? = nil,
         identityConstraints: [XMLSchemaIdentityConstraint] = [],
+        typeAlternatives: [XMLSchemaTypeAlternative] = [],
         inlineSequenceElements: [XMLSchemaElement] = [],
         inlineComplexType: XMLSchemaAnonymousComplexType? = nil,
         inlineSimpleType: XMLSchemaAnonymousSimpleType? = nil
@@ -435,6 +523,7 @@ public struct XMLSchemaElement: Sendable, Equatable {
         self.isAbstract = isAbstract
         self.substitutionGroup = substitutionGroup
         self.identityConstraints = identityConstraints
+        self.typeAlternatives = typeAlternatives
         if let inlineComplexType = inlineComplexType {
             self.inlineComplexType = inlineComplexType
         } else if !inlineSequenceElements.isEmpty {
@@ -463,6 +552,10 @@ public struct XMLSchemaComplexType: Sendable, Equatable {
     public let attributeRefs: [XMLSchemaAttributeReference]
     public let attributeGroupRefs: [XMLQualifiedName]
     public let anyAttribute: XMLSchemaWildcard?
+    /// XSD 1.1: XPath assertions (`<xsd:assert>`).
+    public let assertions: [XMLSchemaAssertion]
+    /// XSD 1.1: open content declaration (`<xsd:openContent>`).
+    public let openContent: XMLSchemaOpenContent?
 
     public var sequence: [XMLSchemaElement] {
         content.compactMap { node in
@@ -514,7 +607,9 @@ public struct XMLSchemaComplexType: Sendable, Equatable {
         attributes: [XMLSchemaAttribute],
         attributeRefs: [XMLSchemaAttributeReference] = [],
         attributeGroupRefs: [XMLQualifiedName] = [],
-        anyAttribute: XMLSchemaWildcard? = nil
+        anyAttribute: XMLSchemaWildcard? = nil,
+        assertions: [XMLSchemaAssertion] = [],
+        openContent: XMLSchemaOpenContent? = nil
     ) {
         self.annotation = annotation
         self.name = name
@@ -535,6 +630,8 @@ public struct XMLSchemaComplexType: Sendable, Equatable {
         self.attributeRefs = attributeRefs
         self.attributeGroupRefs = attributeGroupRefs
         self.anyAttribute = anyAttribute
+        self.assertions = assertions
+        self.openContent = openContent
     }
 
     private static func makeContent(

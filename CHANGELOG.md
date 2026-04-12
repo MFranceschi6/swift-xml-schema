@@ -6,6 +6,15 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 ## [Unreleased]
 
+### Added — XSD 1.1 features (Phase 1.1)
+
+- **`XMLSchemaAssertion`**: new public struct modelling `<xsd:assert>` — stores `test` (XPath expression), optional `xpathDefaultNamespace`, and `annotation`. Parsed by `XMLSchemaDocumentParser`, stored on `XMLSchemaComplexType` / `XMLSchemaAnonymousComplexType` (field `assertions: [XMLSchemaAssertion]`), and carried through the normalizer into `XMLNormalizedComplexType`.
+- **`XMLSchemaTypeAlternative`**: new public struct modelling `<xsd:alternative>` — stores optional `test` (XPath condition), `typeQName`, and `annotation`. Parsed from element children and stored on `XMLSchemaElement` (field `typeAlternatives: [XMLSchemaTypeAlternative]`).
+- **`XMLSchemaOpenContent`** + **`XMLSchemaOpenContentMode`**: new public types modelling `<xsd:openContent>` — `mode` (`.none` / `.interleave` / `.append`), `any: XMLSchemaWildcard?`, `appliesToEmpty`, and `annotation`. Stored on `XMLSchemaComplexType`, `XMLSchemaAnonymousComplexType`, and carried through to `XMLNormalizedComplexType`.
+- **`XMLSchema.defaultOpenContent`**: schema-level `<xsd:defaultOpenContent>` parsed and stored on `XMLSchema`.
+- **Validator awareness**: `XMLSchemaValidator` respects `openContent.mode != .none` — types with open content no longer flag extra child elements as errors (mode `.none` still rejects them).
+- **`XMLXSD11Tests`** (21 cases): parsing, normalisation, and validation tests for all new XSD 1.1 constructs.
+
 ### Added — XMLSchemaFlattener (Phase 1.1)
 
 - **`XMLSchemaFlattener`**: new public struct that converts an `XMLNormalizedSchemaSet` — potentially assembled from multiple XSD files with imports and includes — into a single self-contained XSD `Data` value. The output uses effective content from every normalized type (all model-group, attribute-group, and inheritance expansions pre-applied); no `<xsd:import>`, `<xsd:include>`, `<xsd:extension>`, or `<xsd:restriction>` elements are emitted.

@@ -125,7 +125,13 @@ extension XMLSchemaValidator {
         }
 
         // Sequence content
-        validateContentModel(element, effectiveContent: complexType.effectiveContent, path: path, context: &context)
+        validateContentModel(
+            element,
+            effectiveContent: complexType.effectiveContent,
+            openContent: complexType.openContent,
+            path: path,
+            context: &context
+        )
     }
 
     // MARK: - Content model validation
@@ -134,6 +140,7 @@ extension XMLSchemaValidator {
     private func validateContentModel(
         _ parent: XMLTreeElement,
         effectiveContent: [XMLNormalizedContentNode],
+        openContent: XMLSchemaOpenContent? = nil,
         path: String,
         context: inout ValidationContext
     ) {
@@ -158,8 +165,11 @@ extension XMLSchemaValidator {
             }
         }
 
+        // XSD 1.1: openContent with mode != .none allows extra elements not in the declared set.
+        let hasOpenContent = openContent.map { $0.mode != .none } ?? false
+
         // Flag undeclared XML child elements
-        if !hasWildcard {
+        if !hasWildcard && !hasOpenContent {
             for child in childElements where !declaredNames.contains(child.name.localName) {
                 context.addError(
                     path: "\(path)/\(child.name.localName)",
