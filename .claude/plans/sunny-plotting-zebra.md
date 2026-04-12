@@ -62,18 +62,18 @@ Tutti e 5 gli item erano già implementati nel bootstrap. Archiviato in `.claude
 
 ---
 
-## Phase 0.4 — Redefine, Mixed Content, Identity Constraints (Swift 5.7–5.9)
+## Phase 0.4 — Redefine, Mixed Content, Identity Constraints (Swift 5.7–5.9) ✅ COMPLETATA
 
 **Obiettivo:** Completezza XSD 1.0 al pari di Java e .NET.
 
-| Item | Dettaglio |
-|------|-----------|
-| **`<xsd:redefine>`** | Parsing come variante di include con modifiche tipo/gruppo. Il normalizer applica le ridefinizioni prima della normalizzazione. |
-| **Mixed content** | `isMixed: Bool` su complexType e normalizzati. Codegen emette tipi che alternano text node e child element. Comune in document-oriented XML (XHTML in SOAP). |
-| **Identity constraints** | Parse `<xsd:key>`, `<xsd:keyref>`, `<xsd:unique>` in `XMLSchemaIdentityConstraint`. Attach a elements. Necessario per validazione runtime (Phase 1.1+), utile già ora come metadati. |
-| **`<xsd:notation>`** | Minimale: parse e store per completezza. |
+| Item | Stato |
+|------|-------|
+| **`<xsd:redefine>`** | ✅ — `applyRedefine` in `XMLSchemaDocumentParser+Logic.swift` |
+| **Mixed content** | ✅ — `isMixed: Bool` su `XMLComplexType` e `XMLNormalizedComplexType`, propagato dal normalizer |
+| **Identity constraints** | ✅ — `XMLSchemaIdentityConstraint` (kind: key/keyref/unique), parsato e attaccato a elementi normalizzati |
+| **`<xsd:notation>`** | ✅ — `XMLSchemaNotation` parsato e storato in `XMLSchema.notations` |
 
-**Sblocca downstream:** Compliance XSD 1.0 completa. A questo punto SwiftXMLSchema è al pari di Python xmlschema per parsing/modello.
+**Completata senza essere stata segnata — scoperto durante audit 2026-04-12.**
 
 ---
 
