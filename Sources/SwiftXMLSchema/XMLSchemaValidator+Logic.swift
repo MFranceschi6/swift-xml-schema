@@ -33,7 +33,7 @@ extension XMLSchemaValidator {
             named: element.name.localName,
             namespaceURI: element.name.namespaceURI
         )
-        guard let decl else {
+        guard let decl = decl else {
             context.addError(
                 path: path,
                 message: "Root element '\(element.name.localName)' is not declared in the schema"
@@ -270,7 +270,7 @@ extension XMLSchemaValidator {
         }
 
         // Validate only the selected branch
-        if let matchedBranch, case .element(let use) = matchedBranch {
+        if let matchedBranch = matchedBranch, case .element(let use) = matchedBranch {
             validateElementUse(use, inChildren: children, parentPath: parentPath, context: &context)
         }
     }
@@ -315,7 +315,7 @@ extension XMLSchemaValidator {
             }
 
             // Validate attribute value against its type
-            if let xmlAttr, let typeQName = declared.typeQName {
+            if let xmlAttr = xmlAttr, let typeQName = declared.typeQName {
                 validateAttributeValue(
                     xmlAttr.value,
                     typeQName: typeQName,
